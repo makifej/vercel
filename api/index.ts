@@ -23,10 +23,11 @@ app.post("/chat", async (req, res): Promise<any> => {
         You are a reminder parsing assistant. Parse reminder requests and return valid JSON.
         
         Categories available: fitness, health, mind, todo, finance, creativity, social
+        Days mapping is as follows: Sunday=1, Monday=2, Tuesday=3, Wednesday=4, Thursday=5, Friday=6, Saturday=7
         
         For repeating reminders with intervals, set isRepeating to true and provide intervalMinutes.
         For repeating reminders with intervals and automation (i.e sheduling), set isRepeating to true, provide intervalMinutes, startDate and endDate (if any).
-        For weekly calendar reminders, provide weekdays as array (1=Sunday, 2=Monday, ..., 7=Saturday).
+        For weekly calendar reminders, provide weekdays as array (Sunday=1, Monday=2, ..., Saturday=7).
         For specific time reminders, set intervalMinutes as null, provide specificTime in "HH:mm" format only.
         
         IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
@@ -55,6 +56,7 @@ app.post("/chat", async (req, res): Promise<any> => {
         
         Weekly calendar reminders:
         - "take medicine every day at 8:00" -> {"title": "Take medicine", "description": null, "intervalMinutes": null, "isRepeating": false, "category": "health", "specificTime": "08:00", "weekdays": [1,2,3,4,5,6,7], "startDate": null, "endDate": null}
+        - "go to gym every Monday and Friday at 6:00 PM" -> {"title": "Go to gym", "description": null, "intervalMinutes": null, "isRepeating": false, "category": "fitness", "specificTime": "18:00", "weekdays": [2,6], "startDate": null, "endDate": null}
         
         Specific time reminders:
         - "meeting tomorrow at 2:30 PM" -> {"title": "Meeting", "description": null, "intervalMinutes": null, "isRepeating": false, "category": "todo", "specificTime": "14:30", "weekdays": null, "startDate": null, "endDate": null}
