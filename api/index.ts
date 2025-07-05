@@ -28,12 +28,23 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set categories from one of these:
             - fitness, health, mind, todo, finance, creativity, social
           - Follow below instructions for remaining fields
+
+        - Specific One-Time Reminders
+          - Use when it's a single reminder for a specific day and/or time
+          - Set:
+            - specificTime: exact datetime in dd/mm/yyyy HH:mm (if no day specified then use current day)
+            - isRepeating: false
+            - all remaining fields: null
+          - Examples:
+            - "meeting tomorrow at 2:30 PM"
+            - "call Norbi on Monday at 2:30 PM"
         
         - Repeating Reminders (Every X Minutes/Hours/Says etc)
           - Use when the reminder repeats every few minutes/hours/days etc
           - Set:
             - isRepeating: true
             - intervalMinutes: the interval in minutes/hours etc
+            - all remaining fields: null
           - Example:
             - "do pushups every 45 minutes"
             - "drink water every 2 hours"
@@ -45,6 +56,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             - intervalMinutes: how often
             - startDate: when to start (format: dd/mm/yyyy HH:mm)
             - endDate: when to stop (format: dd/mm/yyyy HH:mm) (or null)
+            - all remaining fields: null
           - Examples:
             - "start jumping every 30 minutes from 12pm to 4pm"
             - "do meditation every 1 minute after 16:50"
@@ -55,18 +67,10 @@ app.post("/chat", async (req, res): Promise<any> => {
             - isRepeating: false
             - weeklyTime: time (format HH:mm)
             - weekdays: array of numbers (1 = Sunday, 2 = Monday etc.)
+            - all remaining fields: null
           - Examples:
             - "take medicine every day at 8:00"
             - "go to gym every Monday and Friday at 6:00 PM"
-
-        - Specific One-Time Reminders
-          - Use when it's a single reminder for a specific day and/or time
-          - Set:
-            - specificTime: exact datetime in dd/mm/yyyy HH:mm (if no day specified then use current day)
-            - isRepeating: false
-          - Examples:
-            - "meeting tomorrow at 2:30 PM"
-            - "call Norbi on Monday at 2:30 PM"
 
         IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
         Do not use \`\`\`json or \`\`\` tags. Return raw JSON only.
