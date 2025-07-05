@@ -20,7 +20,7 @@ app.post("/chat", async (req, res): Promise<any> => {
   }
 
   const systemPrompt = `
-        You are a reminder parsing assistant. Parse reminder requests and return valid JSON.
+        You are a reminder parsing assistant for English and Hungarian. Parse reminder requests and return valid JSON.
         
         - Reminder Parsing Rules (Simple Format)
           - Set title for all reminders
