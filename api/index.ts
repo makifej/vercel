@@ -66,7 +66,7 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set:
             - isRepeating: false
             - weeklyTime: time (format HH:mm)
-            - weekdays: array of numbers (1 = Sunday, 2 = Monday etc.)
+            - weekdays: array of numbers (1 = Sunday, 2 = Monday etc for English and 1 = Vasárnap, 2 = Hétfő etc for Hungarian)
             - all remaining fields: null
           - Examples:
             - "take medicine every day at 8:00"
