@@ -74,6 +74,7 @@ app.post("/chat", async (req, res): Promise<any> => {
 
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
+          - Current Date is: ${new Date()}.
           - When parsing day names (e.g. Monday / Hétfő), always resolve them as the next upcoming occurrence of that day based on the provided current date.
           - Do not use \`\`\`json or \`\`\` tags. Return raw JSON only.
     `;
@@ -95,11 +96,11 @@ app.post("/chat", async (req, res): Promise<any> => {
             "endDate": null or "dd/mm/yyyy HH:mm"
         }
 
-        Remember: Return ONLY the JSON object, no extra text or formatting. Today is: ${new Date()}. Refer this date when parsing day(s).
+        Remember: Return ONLY the JSON object, no extra text or formatting.
     `;
 
   const requestBody = {
-    model: "gpt-4o-mini",
+    model: "gpt-3.5-turbo",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
