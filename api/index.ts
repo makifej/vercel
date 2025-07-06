@@ -75,7 +75,11 @@ app.post("/chat", async (req, res): Promise<any> => {
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
           - Current Date is: ${new Date()}.
-          - When parsing day names (e.g. Monday / Hétfő), always resolve them as the next upcoming occurrence of that day based on the provided current date.
+          - When parsing day names (e.g. Monday / Hétfő), resolve them to the next correct calendar date using the following rule:
+            - Compare the target weekday to the current date’s weekday.
+            - If the day is **later in the week**, move forward to that day this week.
+            - If the day is **today but the time has already passed**, or if the day is **earlier in the week**, move to that day **next week**.
+            - Always ensure the final resolved date’s weekday **matches the name provided** (e.g. "Friday" must resolve to a date where weekday = 6).
           - Do not use \`\`\`json or \`\`\` tags. Return raw JSON only.
     `;
 
@@ -100,12 +104,12 @@ app.post("/chat", async (req, res): Promise<any> => {
     `;
 
   const requestBody = {
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.3,
+    temperature: 0.1,
     max_tokens: 200,
   };
 
