@@ -74,7 +74,6 @@ app.post("/chat", async (req, res): Promise<any> => {
 
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
-          - Current Date is: ${new Date()}.
           - When parsing day names (e.g. Monday / Hétfő), resolve them to the next correct calendar date using the following rule:
             - Compare the target weekday to the current date’s weekday.
             - If the day is **later in the week**, move forward to that day this week.
