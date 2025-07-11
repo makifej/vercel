@@ -28,6 +28,8 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set categories from one of these:
             - fitness, health, mind, todo, finance, creativity, social
           - Follow below instructions for remaining fields
+          - Time Parsing Note for Hungarian
+            - In Hungarian, times like "14h", "14 óra", "14:00" all mean 2 PM and should be parsed as 14:00 in 24-hour format.
 
         - Specific One-Time Reminders
           - Use when it's a single reminder for a specific day and/or time
