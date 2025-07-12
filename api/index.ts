@@ -28,6 +28,9 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set categories from one of these:
             - fitness, health, mind, todo, finance, creativity, social
           - Follow below instructions for remaining fields
+          - specificTime shall always be according to Current Date.
+            - i.e. 10 minutes should be parsed as current date + 10 minutes
+            - i.e. 2 pm should be parsed as current date at 14:00
           - Time Parsing Note for Hungarian
             - Times like "délután 2 óra", "14 óra", "14h" all mean 2 PM and should be parsed as 14:00 in 24-hour format.
             - And times like "hajnali 2 óra", "2 óra", "2h" all mean 2 AM and should be parsed as 02:00 in 24-hour format.
