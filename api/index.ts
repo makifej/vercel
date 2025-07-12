@@ -28,6 +28,7 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set categories from one of these:
             - fitness, health, mind, todo, finance, creativity, social
           - Follow below instructions for remaining fields
+          - specificTime, startDate, endDate shall be in UTC timezone 
           - Time Parsing Note for Hungarian
             - Times like "délután 2 óra", "14 óra", "14h" all mean 2 PM and should be parsed as 14:00 in 24-hour format.
             - And times like "hajnali 2 óra", "2 óra", "2h" all mean 2 AM and should be parsed as 02:00 in 24-hour format.
