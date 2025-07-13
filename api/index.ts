@@ -79,6 +79,16 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "take medicine every day at 8:00"
             - "go to gym every Monday and Friday at 6:00 PM"
 
+        - Monthly Reminders (Same month, specific days and time)
+          - Use when reminder repeats on specific days in a month
+          - Set:
+            - isRepeating: false
+            - monthlyDates: array of dates in format dd/mm/yyyy HH:mm (e.g. ["01/01/2023 10:00", "15/01/2023 10:00"])
+            - all remaining fields: null
+          - Examples:
+            - "pay rent on 1 and 15 july at 10:00"
+            - "appointment with doctor on 5 July at 3:00 PM and 20 July at 11:00 AM"
+
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
           - When parsing day names (e.g. Monday / Hétfő), resolve them to the next correct calendar date using the following rule:
@@ -103,7 +113,8 @@ app.post("/chat", async (req, res): Promise<any> => {
             "weeklyTime": null or "HH:mm",
             "weekdays": null or [1,2,3,4,5,6,7],
             "startDate": null or "dd/mm/yyyy HH:mm", 
-            "endDate": null or "dd/mm/yyyy HH:mm"
+            "endDate": null or "dd/mm/yyyy HH:mm",
+            "monthlyDates": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"]
         }
 
         Remember: Return ONLY the JSON object, no extra text or formatting.
