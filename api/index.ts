@@ -6,10 +6,10 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-if (!OPENAI_API_KEY) {
-    throw new Error("OPENAI_API_KEY is not defined in environment variables");
+if (!GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY is not defined in environment variables");
 }
 
 app.post("/chat", async (req, res): Promise<any> => {
@@ -121,28 +121,29 @@ app.post("/chat", async (req, res): Promise<any> => {
     `;
 
   const requestBody = {
-    model: "gpt-4o",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
+    contents: [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "model", parts: [{ text: "Okay, I understand. I will parse your reminder requests and return only valid JSON according to your specified format and rules." }] },
+      { role: "user", parts: [{ text: userPrompt }] },
     ],
-    temperature: 0.1,
-    max_tokens: 200,
+    generationConfig: {
+      temperature: 0.1,
+      responseMimeType: "application/json",
+    },
   };
 
   try {
     const response = await axios.post(
-      "https://api.openai.com/v1/chat/completions",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       requestBody,
       {
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
       }
     );
 
-    res.send(response.data.choices[0].message.content); // Send the parsed JSON response back to the client
+    res.send(response.data.candidates[0].content.parts[0].text); 
   } catch (error) {
     console.error("Error calling OpenAI API:", error);
     res.status(500).send({ error: `Failed to fetch response from OpenAI\n${error}` });
