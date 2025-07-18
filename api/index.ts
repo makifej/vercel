@@ -134,7 +134,7 @@ app.post("/chat", async (req, res): Promise<any> => {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
       requestBody,
       {
         headers: {
@@ -143,7 +143,7 @@ app.post("/chat", async (req, res): Promise<any> => {
       }
     );
 
-    res.send(response.data.candidates[0].content.parts[0].text); 
+    res.send(response.data.candidates[0].content.parts[0].text);
   } catch (error) {
     console.error("Error calling OpenAI API:", error);
     res.status(500).send({ error: `Failed to fetch response from OpenAI\n${error}` });
