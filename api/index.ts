@@ -68,16 +68,29 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "start jumping every 30 minutes from 12pm to 4pm"
             - "do meditation every 1 minute after 16:50"
           
-        - Weekly Reminders (Same time, specific days)
-          - Use when reminder repeats every week on specific days
+        - Weekly Reminders (Same time, specific days, x week)
+          - Use when reminder repeats every x week on specific days but same time
           - Set:
             - isRepeating: false
             - weeklyTime: time (format HH:mm)
             - weekdays: array of numbers (1 = Sunday, 2 = Monday etc for English and 1 = Vasárnap, 2 = Hétfő etc for Hungarian)
+            - repeatAfterWeeks: number of weeks to repeat after (or null)
             - all remaining fields: null
           - Examples:
             - "take medicine every day at 8:00"
             - "go to gym every Monday and Friday at 6:00 PM"
+            - "every 2 weeks go to market on Wednesday and Saturday at 10:00 AM"
+          
+        - Weekly Reminders (specific days + times, x week)
+          - Use when reminder repeats every x week on specific days and times
+          - Set:
+            - isRepeating: false
+            - weeklySpecificTimes: array of times in format dd/mm/yyyy HH:mm (e.g. ["01/01/2023 10:00", "01/01/2023 11:00", "15/01/2023 12:00"])
+            - repeatAfterWeeks: number of weeks to repeat after (or null)
+            - all remaining fields: null
+          - Examples:
+            - "go to market every Monday at 4:00 PM and Friday at 6:00 PM"
+            - "every 2 weeks walk dog on Wednesday 9:00 AM and Saturday at 10:00 AM"
 
         - Monthly Reminders (Same month, specific days and time)
           - Use when reminder repeats on specific days in a month
@@ -112,6 +125,9 @@ app.post("/chat", async (req, res): Promise<any> => {
             "specificTime": null or "dd/mm/yyyy HH:mm",
             "weeklyTime": null or "HH:mm",
             "weekdays": null or [1,2,3,4,5,6,7],
+            "weeklySpecificTimes": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"],
+            "repeatAfterWeeks": null or number,
+            "repeatAfterDays": null or number,
             "startDate": null or "dd/mm/yyyy HH:mm", 
             "endDate": null or "dd/mm/yyyy HH:mm",
             "monthlyDates": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"]
