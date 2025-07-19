@@ -39,6 +39,7 @@ app.post("/chat", async (req, res): Promise<any> => {
         - Specific One-Time Reminders
           - Use when it's a single reminder for a specific day and/or time
           - Set:
+            - type: "Once"
             - specificTime: exact datetime in dd/mm/yyyy HH:mm (if no day specified then use current day)
             - isRepeating: false
             - all remaining fields: null
@@ -46,9 +47,12 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "meeting tomorrow at 2:30 PM"
             - "call Norbi on Monday at 2:30 PM"
         
-        - Repeating Reminders (Every X Minutes/Hours/Says etc)
+        - Repeating Reminders (Every X Minutes/Hours/Days etc)
           - Use when the reminder repeats every few minutes/hours/days etc
           - Set:
+            - type: "Repeat"
+            - repeatFrequency: "Daily"
+            - repeatDailyFrequency: "Interval"
             - isRepeating: true
             - intervalMinutes: the interval in minutes/hours etc
             - all remaining fields: null
@@ -59,6 +63,9 @@ app.post("/chat", async (req, res): Promise<any> => {
         - Repeating with Time Range
           - Use when reminder repeats every few minutes/hours/days etc within a time range or has a start time or ending time
           - Set:
+            - type: "Repeat"
+            - repeatFrequency: "Daily"
+            - repeatDailyFrequency: "Specific Times"
             - isRepeating: true
             - intervalMinutes: how often
             - startDate: when to start (format: dd/mm/yyyy HH:mm)
@@ -71,6 +78,9 @@ app.post("/chat", async (req, res): Promise<any> => {
         - Weekly Reminders (Same time, specific days, x week)
           - Use when reminder repeats every x week on specific days but same time
           - Set:
+            - type: "Repeat"
+            - repeatFrequency: "Weekly"
+            - repeatWeeklyFrequency: "Simple Schedule"
             - isRepeating: false
             - weeklyTime: time (format HH:mm)
             - weekdays: array of numbers (1 = Sunday, 2 = Monday etc for English and 1 = Vasárnap, 2 = Hétfő etc for Hungarian)
@@ -84,6 +94,9 @@ app.post("/chat", async (req, res): Promise<any> => {
         - Weekly Reminders (specific days + times, x week)
           - Use when reminder repeats every x week on specific days and times
           - Set:
+            - type: "Repeat"
+            - repeatFrequency: "Weekly"
+            - repeatWeeklyFrequency: "Advanced Schedule"
             - isRepeating: false
             - weeklySpecificTimes: array of times in format dd/mm/yyyy HH:mm (e.g. ["01/01/2023 10:00", "01/01/2023 11:00", "15/01/2023 12:00"])
             - repeatAfterWeeks: number of weeks to repeat after (or 1)
@@ -95,6 +108,8 @@ app.post("/chat", async (req, res): Promise<any> => {
         - Monthly Reminders (Same month, specific days and time)
           - Use when reminder repeats on specific days in a month
           - Set:
+            - type: "Repeat"
+            - repeatFrequency: "Monthly"
             - isRepeating: false
             - monthlyDates: array of dates in format dd/mm/yyyy HH:mm (e.g. ["01/01/2023 10:00", "15/01/2023 10:00"])
             - all remaining fields: null
@@ -119,6 +134,10 @@ app.post("/chat", async (req, res): Promise<any> => {
         {
             "title": "activity name",
             "description": "optional description or null",
+            "type": "Once" or "Repeat",
+            "repeatFrequency": "Daily" or "Weekly" or "Monthly",
+            "repeatDailyFrequency": "Interval" or "Specific Times" or "Every X Days",
+            "repeatWeeklyFrequency": "Simple Schedule" or "Advanced Schedule",
             "intervalMinutes": null or number,
             "isRepeating": true or false,
             "category": "category name or null",
