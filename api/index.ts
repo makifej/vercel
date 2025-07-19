@@ -74,7 +74,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             - isRepeating: false
             - weeklyTime: time (format HH:mm)
             - weekdays: array of numbers (1 = Sunday, 2 = Monday etc for English and 1 = Vasárnap, 2 = Hétfő etc for Hungarian)
-            - repeatAfterWeeks: number of weeks to repeat after (or null)
+            - repeatAfterWeeks: number of weeks to repeat after (or 1)
             - all remaining fields: null
           - Examples:
             - "take medicine every day at 8:00"
@@ -86,7 +86,7 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set:
             - isRepeating: false
             - weeklySpecificTimes: array of times in format dd/mm/yyyy HH:mm (e.g. ["01/01/2023 10:00", "01/01/2023 11:00", "15/01/2023 12:00"])
-            - repeatAfterWeeks: number of weeks to repeat after (or null)
+            - repeatAfterWeeks: number of weeks to repeat after (or 1)
             - all remaining fields: null
           - Examples:
             - "go to market every Monday at 4:00 PM and Friday at 6:00 PM"
