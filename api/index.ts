@@ -65,7 +65,7 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set:
             - type: "Repeat"
             - repeatFrequency: "Daily"
-            - repeatDailyFrequency: "Specific Times"
+            - repeatDailyFrequency: "Interval"
             - isRepeating: true
             - intervalMinutes: how often
             - startDate: when to start (format: dd/mm/yyyy HH:mm)
@@ -74,6 +74,33 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Examples:
             - "start jumping every 30 minutes from 12pm to 4pm"
             - "do meditation every 1 minute after 16:50"
+          
+        - Repeating Reminders (Same day, specific times)
+          - Use when the reminder repeats on the same day but different times
+          - Set:
+            - type: "Repeat"
+            - repeatFrequency: "Daily"
+            - repeatDailyFrequency: "Specific Times"
+            - isRepeating: true
+            - dailySpecificTimes: array of times in format dd/mm/yyyy HH:mm (e.g. ["01/01/2023 10:00", "01/01/2023 11:00", "01/01/2023 12:00"])
+            - all remaining fields: null
+          - Example:
+            - "do pushups on Monday at 6:00 AM and 6:00 PM"
+            - "go far walk on Wednesday at 10:00 AM and 3:00 PM"
+
+        - Repeating Reminders (Every X day, specific time)
+          - Use when the reminder repeats on specific time after every x day
+          - Set:
+            - type: "Repeat"
+            - repeatFrequency: "Daily"
+            - repeatDailyFrequency: "Every X Days"
+            - isRepeating: true
+            - repeatAfterDays: number of days to repeat after (or 1)
+            - specificTime: exact time in format dd/mm/yyyy HH:mm (e.g. "01/01/2023 10:00")
+            - all remaining fields: null
+          - Example:
+            - "do pushups every 2 days at 10:00 AM"
+            - "do jogging every 3 days at 6:00 PM"
           
         - Weekly Reminders (Same time, specific days, x week)
           - Use when reminder repeats every x week on specific days but same time
@@ -139,6 +166,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             "repeatDailyFrequency": "Interval" or "Specific Times" or "Every X Days",
             "repeatWeeklyFrequency": "Simple Schedule" or "Advanced Schedule",
             "intervalMinutes": null or number,
+            "dailySpecificTimes": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"],
             "isRepeating": true or false,
             "category": "category name or null",
             "specificTime": null or "dd/mm/yyyy HH:mm",
