@@ -109,7 +109,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             - If the day is **later in the week**, move forward to that day this week.
             - If the day is **today but the time has already passed**, or if the day is **earlier in the week**, move to that day **next week**.
             - Always ensure the final resolved date’s weekday **matches the name provided** (e.g. "Friday" must resolve to a date where weekday = 6).
-          - Do not use \`\`\`json or \`\`\` tags. Return raw JSON only.
+          - Do not use \`\`\`json or \`\`\` tags. Return single raw JSON only.
     `;
 
   const userPrompt = `
