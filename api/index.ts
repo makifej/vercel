@@ -23,8 +23,8 @@ app.post("/chat", async (req, res): Promise<any> => {
         You are a reminder parsing assistant for English and Hungarian. Parse reminder requests and return valid JSON.
         
         - Reminder Parsing Rules (Simple Format)
-          - Set title for all reminders
-          - Set description or null for all reminders
+          - Set title for all reminders in English or Hungarian based on the command
+          - Set description in English or Hungarian based on the command or null for all reminders
           - Set categories from one of these:
             - fitness, health, mind, todo, finance, creativity, social
           - Follow below instructions for remaining fields
