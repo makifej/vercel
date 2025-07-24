@@ -213,6 +213,97 @@ app.post("/chat", async (req, res): Promise<any> => {
   }
 });
 
+app.post("/timeline", async (req, res): Promise<any> => {
+  const { command } = req.body;
+
+  if (!command) {
+    return res.status(400).send({ error: "Command is required" });
+  }
+
+  const systemPrompt = `
+        You are a task timeline parsing assistant for English and Hungarian. Your goal is to parse user commands and return a valid JSON array of task objects.
+
+        - Task Parsing Rules:
+          - For each task identified in the command, create a separate JSON object within the array.
+          - Set 'title' for each task in English or Hungarian based on the command.
+          - Set 'description' in English or Hungarian based on the command, or null if no specific description is provided.
+          - Set 'category' from one of these: fitness, health, mind, todo, finance, creativity, social. Choose the most relevant category.
+          - 'startTime' and 'endTime' shall always be in 'dd/mm/yyyy HH:mm' format.
+            - If only a time is specified (e.g., "10 AM"), assume it's for the current date.
+            - If a duration is given (e.g., "2-hour workout"), calculate 'endTime' based on 'startTime' and the duration.
+            - If no duration is specified for a task, infer a default duration of 30 minutes.
+            - Times like "10 minutes" should be parsed as current date + 10 minutes for startTime, and an appropriate endTime.
+            - Times like "2 pm" should be parsed as current date at 14:00.
+
+          - Time Parsing Note for Hungarian:
+            - Times like "délután 2 óra", "14 óra", "14h" all mean 2 PM and should be parsed as 14:00 in 24-hour format.
+            - And times like "hajnali 2 óra", "2 óra", "2h" all mean 2 AM and should be parsed as 02:00 in 24-hour format.
+
+        IMPORTANT:
+          - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
+          - When parsing day names (e.g. Monday / Hétfő), resolve them to the next correct calendar date using the following rule:
+            - Compare the target weekday to the current date's weekday.
+            - If the day is **later in the week**, move forward to that day this week.
+            - If the day is **today but the time has already passed**, or if the day is **earlier in the week**, move to that day **next week**.
+            - Always ensure the final resolved date's weekday **matches the name provided** (e.g. "Friday" must resolve to a date where weekday = 6).
+          - Do not use \`\`\`json or \`\`\` tags. Return single raw JSON only.
+    `;
+
+  const userPrompt = `
+        Parse this task timeline request: "${command}"
+        
+        Return ONLY valid JSON in this exact format (an array of task objects):
+        [
+            {
+                "title": "activity name",
+                "description": "optional description or null",
+                "category": "category name",
+                "startTime": "dd/mm/yyyy HH:mm",
+                "endTime": "dd/mm/yyyy HH:mm"
+            },
+            {
+                "title": "another activity name",
+                "description": "optional description or null",
+                "category": "category name",
+                "startTime": "dd/mm/yyyy HH:mm",
+                "endTime": "dd/mm/yyyy HH:mm"
+            }
+            // ... more task objects if applicable
+        ]
+
+        Remember: Return ONLY the JSON array, no extra text or formatting.
+    `;
+
+  const requestBody = {
+    contents: [
+      { role: "user", parts: [{ text: systemPrompt }] },
+      { role: "model", parts: [{ text: "Okay, I understand. I will parse your task timeline requests and return only valid JSON according to your specified format and rules, as an array of task objects." }] },
+      { role: "user", parts: [{ text: userPrompt }] },
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      responseMimeType: "application/json",
+    },
+  };
+
+  try {
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      requestBody,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    res.send(response.data.candidates[0].content.parts[0].text);
+  } catch (error) {
+    console.error("Error calling Gemini API:", error);
+    res.status(500).send({ error: `Failed to fetch response from Gemini\n${error}` });
+  }
+});
+
 app.listen(3000, () => console.log("Server ready on port 3000."));
 
 module.exports = app;
