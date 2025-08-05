@@ -148,14 +148,14 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Use when the reminder follows the Pomodoro technique (i.e., alternating focus and break periods).
           - Set:
             - type: "Pomodoro"
+            - isRepeating: false
             - pomodoroFocus: focus duration in minutes (e.g. 25)
             - pomodoroBreak: break duration in minutes (e.g. 5)
             - pomodoroCycles: total number of cycles (e.g. 4)
-            - pomodoroStartTime: specified start time or current time in dd/mm/yyyy HH:mm
             - all remaining fields: null
           - Examples:
-            - "Start a Pomodoro session with 25 minutes focus and 5 minutes break for 4 cycles starting at 10:00 AM"
-            - "Kezdj egy Pomodoro munkamenetet 20 perc fókusz és 10 perc szünet, 3 ciklussal, 14:00-tól"
+            - "Start a Pomodoro session with 25 minutes focus and 5 minutes break for 4 cycles"
+            - "Kezdj egy Pomodoro munkamenetet 20 perc fókusz és 10 perc szünet, 3 ciklussal"
 
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
@@ -191,10 +191,9 @@ app.post("/chat", async (req, res): Promise<any> => {
             "startDate": null or "dd/mm/yyyy HH:mm", 
             "endDate": null or "dd/mm/yyyy HH:mm",
             "monthlyDates": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"]
-            "pomodoroFocus": null or number,                // focus duration in minutes
-            "pomodoroBreak": null or number,                // break duration in minutes
-            "pomodoroCycles": null or number,               // number of total cycles
-            "pomodoroStartTime": null or "dd/mm/yyyy HH:mm"
+            "pomodoroFocus": null or number,
+            "pomodoroBreak": null or number,
+            "pomodoroCycles": null or number,
         }
 
         Remember: Return ONLY the JSON object, no extra text or formatting.
