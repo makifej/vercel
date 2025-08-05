@@ -144,6 +144,19 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "pay rent on 1 and 15 july at 10:00"
             - "appointment with doctor on 5 July at 3:00 PM and 20 July at 11:00 AM"
 
+        - Pomodoro Reminders (Focus, Break, Pomodoro)
+          - Use when the reminder follows the Pomodoro technique (i.e., alternating focus and break periods).
+          - Set:
+            - type: "Pomodoro"
+            - pomodoroFocus: focus duration in minutes (e.g. 25)
+            - pomodoroBreak: break duration in minutes (e.g. 5)
+            - pomodoroCycles: total number of cycles (e.g. 4)
+            - pomodoroStartTime: specified start time or current time in dd/mm/yyyy HH:mm
+            - all remaining fields: null
+          - Examples:
+            - "Start a Pomodoro session with 25 minutes focus and 5 minutes break for 4 cycles starting at 10:00 AM"
+            - "Kezdj egy Pomodoro munkamenetet 20 perc fókusz és 10 perc szünet, 3 ciklussal, 14:00-tól"
+
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
           - When parsing day names (e.g. Monday / Hétfő), resolve them to the next correct calendar date using the following rule:
@@ -161,7 +174,7 @@ app.post("/chat", async (req, res): Promise<any> => {
         {
             "title": "activity name",
             "description": "optional description or null",
-            "type": "Once" or "Repeat",
+            "type": "Once" or "Repeat", "Pomodoro",
             "repeatFrequency": "Daily" or "Weekly" or "Monthly",
             "repeatDailyFrequency": "Interval" or "Specific Times" or "Every X Days",
             "repeatWeeklyFrequency": "Simple Schedule" or "Advanced Schedule",
@@ -178,6 +191,10 @@ app.post("/chat", async (req, res): Promise<any> => {
             "startDate": null or "dd/mm/yyyy HH:mm", 
             "endDate": null or "dd/mm/yyyy HH:mm",
             "monthlyDates": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"]
+            "pomodoroFocus": null or number,                // focus duration in minutes
+            "pomodoroBreak": null or number,                // break duration in minutes
+            "pomodoroCycles": null or number,               // number of total cycles
+            "pomodoroStartTime": null or "dd/mm/yyyy HH:mm"
         }
 
         Remember: Return ONLY the JSON object, no extra text or formatting.
