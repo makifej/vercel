@@ -61,19 +61,21 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "drink water every 2 hours"
 
         - Repeating with Time Range
-          - Use when reminder repeats every few minutes/hours/days etc within a time range or has a start time or ending time
+          - Use when reminder repeats every few minutes/hours/days etc within a time range or has a start time
+            or ending time or day like today, tomorrow, etc but repeat after a specific interval
           - Set:
             - type: "Repeat"
             - repeatFrequency: "Daily"
             - repeatDailyFrequency: "Interval"
             - isRepeating: true
             - intervalMinutes: how often
-            - startDate: when to start (format: dd/mm/yyyy HH:mm)
-            - endDate: when to stop (format: dd/mm/yyyy HH:mm) (or null)
+            - startDate: when to start (format: dd/mm/yyyy HH:mm) (current time if today or 12 am if tomorrow etc)
+            - endDate: when to stop (format: dd/mm/yyyy HH:mm) (or null) (11:59 pm if today, tomorrow etc)
             - all remaining fields: null
           - Examples:
             - "start jumping every 30 minutes from 12pm to 4pm"
             - "do meditation every 1 minute after 16:50"
+            - "Emlékeztess ma, hogy óránként pihenjek
           
         - Repeating Reminders (Same day, specific times)
           - Use when the reminder repeats on the same day but different times
