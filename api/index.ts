@@ -186,6 +186,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             "dailySpecificTimes": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"],
             "isRepeating": true or false,
             "category": "category name or null",
+            "specificTime": null or "dd/mm/yyyy HH:mm",
             "specificTimes": null or ["dd/mm/yyyy HH:mm"],
             "weeklyTime": null or "HH:mm",
             "weekdays": null or [1,2,3,4,5,6,7],
