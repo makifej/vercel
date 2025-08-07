@@ -102,7 +102,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "do pushups every 2 days at 10:00 AM"
             - "do jogging every 3 days at 6:00 PM"
           
-        - Weekly Reminders (Same time, specific days, x week)
+        - Weekly Reminders (Same time, specific days)
           - Use when reminder repeats every x week on specific days but same time
           - Set:
             - type: "Repeat"
