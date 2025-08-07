@@ -71,7 +71,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             - repeatDailyFrequency: "Interval"
             - isRepeating: true
             - intervalMinutes: how often
-            - startDate: when to start (format: dd/mm/yyyy HH:mm) (or null if day is today) (or 12 am if tomorrow/day after tomorrow etc)
+            - startDate: when to start (format: dd/mm/yyyy HH:mm) (current time + 1 minute if today or 12 am if tomorrow etc)
             - endDate: when to stop (format: dd/mm/yyyy HH:mm) (or null) (11:59 pm if today, tomorrow etc)
             - all remaining fields: null
           - Examples:
