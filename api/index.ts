@@ -102,7 +102,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "do pushups every 2 days at 10:00 AM"
             - "do jogging every 3 days at 6:00 PM"
           
-        - Weekly Reminders (Same time, specific days, no or x week)
+        - Weekly Reminders (Same time, specific days, x week)
           - Use when reminder repeats every x week on specific days but same time
           - Set:
             - type: "Repeat"
@@ -117,7 +117,6 @@ app.post("/chat", async (req, res): Promise<any> => {
             - "take medicine every day at 8:00"
             - "go to gym every Monday and Friday at 6:00 PM"
             - "every 2 weeks go to market on Wednesday and Saturday at 10:00 AM"
-            - "Ma, holnap és holnapután futni menni este 7kor"
           
         - Weekly Reminders (specific days + times, x week)
           - Use when reminder repeats every x week on specific days and times
@@ -144,6 +143,7 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Examples:
             - "pay rent on 1 and 15 july at 10:00"
             - "appointment with doctor on 5 July at 3:00 PM and 20 July at 11:00 AM"
+            - "Ma, holnap és holnapután futni menni este 7kor"
 
         - Pomodoro Reminders (Focus, Break, Pomodoro)
           - Use when the reminder follows the Pomodoro technique (i.e., alternating focus and break periods).
