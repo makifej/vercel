@@ -41,7 +41,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             or specific time but multiple days like today, tomorrow, etc.
           - Set:
             - type: "Once"
-            - specificTimes: [exact datetime in dd/mm/yyyy HH:mm (if no day specified then use current day)]
+            - specificDates: [exact datetime in dd/mm/yyyy HH:mm (if no day specified then use current day)]
             - isRepeating: false
             - all remaining fields: null
           - Examples:
@@ -187,7 +187,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             "isRepeating": true or false,
             "category": "category name or null",
             "specificTime": null or "dd/mm/yyyy HH:mm",
-            "specificTimes": null or ["dd/mm/yyyy HH:mm"],
+            "specificDates": null or ["dd/mm/yyyy HH:mm"],
             "weeklyTime": null or "HH:mm",
             "weekdays": null or [1,2,3,4,5,6,7],
             "weeklySpecificTimes": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"],
