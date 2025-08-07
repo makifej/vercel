@@ -38,14 +38,16 @@ app.post("/chat", async (req, res): Promise<any> => {
 
         - Specific One-Time Reminders
           - Use when it's a single reminder for a specific day and/or time
+            or specific time but multiple days like today, tomorrow, etc.
           - Set:
             - type: "Once"
-            - specificTime: exact datetime in dd/mm/yyyy HH:mm (if no day specified then use current day)
+            - specificTimes: [exact datetime in dd/mm/yyyy HH:mm (if no day specified then use current day)]
             - isRepeating: false
             - all remaining fields: null
           - Examples:
             - "meeting tomorrow at 2:30 PM"
             - "call Norbi on Monday at 2:30 PM"
+            - "Ma, holnap és holnapután futni menni este 7kor"       
         
         - Repeating Reminders (Every X Minutes/Hours/Days etc)
           - Use when the reminder repeats every few minutes/hours/days etc
@@ -69,7 +71,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             - repeatDailyFrequency: "Interval"
             - isRepeating: true
             - intervalMinutes: how often
-            - startDate: when to start (format: dd/mm/yyyy HH:mm) (current time if today or 12 am if tomorrow etc)
+            - startDate: when to start (format: dd/mm/yyyy HH:mm) (current time + 1 minute if today or 12 am if tomorrow etc)
             - endDate: when to stop (format: dd/mm/yyyy HH:mm) (or null) (11:59 pm if today, tomorrow etc)
             - all remaining fields: null
           - Examples:
@@ -145,7 +147,6 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Examples:
             - "pay rent on 1 and 15 july at 10:00"
             - "appointment with doctor on 5 July at 3:00 PM and 20 July at 11:00 AM"
-            - "Ma, holnap és holnapután futni menni este 7kor"
 
         - Pomodoro Reminders (Focus, Break, Pomodoro)
           - Use when the reminder follows the Pomodoro technique (i.e., alternating focus and break periods).
@@ -185,7 +186,7 @@ app.post("/chat", async (req, res): Promise<any> => {
             "dailySpecificTimes": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"],
             "isRepeating": true or false,
             "category": "category name or null",
-            "specificTime": null or "dd/mm/yyyy HH:mm",
+            "specificTimes": null or ["dd/mm/yyyy HH:mm"],
             "weeklyTime": null or "HH:mm",
             "weekdays": null or [1,2,3,4,5,6,7],
             "weeklySpecificTimes": null or ["dd/mm/yyyy HH:mm", "dd/mm/yyyy HH:mm"],
