@@ -252,6 +252,7 @@ app.post("/timeline", async (req, res): Promise<any> => {
           - Set 'title' for each task in English or Hungarian based on the command.
           - Set 'description' in English or Hungarian based on the command, or null if no specific description is provided.
           - Set 'category' from one of these: fitness, health, mind, todo, finance, creativity, social. Choose the most relevant category.
+          - Set 'syncToCalendar' true when user wants to sync the task to their calendar, otherwise false.
           - 'startTime' and 'endTime' shall always be in 'dd/mm/yyyy HH:mm' format.
             - If only a time is specified (e.g., "10 AM"), assume it's for the current date.
             - If a duration is given (e.g., "2-hour workout"), calculate 'endTime' based on 'startTime' and the duration.
@@ -283,14 +284,16 @@ app.post("/timeline", async (req, res): Promise<any> => {
                 "description": "optional description or null",
                 "category": "category name",
                 "startTime": "dd/mm/yyyy HH:mm",
-                "endTime": "dd/mm/yyyy HH:mm"
+                "endTime": "dd/mm/yyyy HH:mm",
+                "syncToCalendar": true or false,
             },
             {
                 "title": "another activity name",
                 "description": "optional description or null",
                 "category": "category name",
                 "startTime": "dd/mm/yyyy HH:mm",
-                "endTime": "dd/mm/yyyy HH:mm"
+                "endTime": "dd/mm/yyyy HH:mm",
+                "syncToCalendar": true or false,
             }
             // ... more task objects if applicable
         ]
