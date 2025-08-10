@@ -34,7 +34,7 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Time Parsing Note for Hungarian
             - Times like "délután 2 óra", "14 óra", "14h", all mean 2 PM and should be parsed as 14:00 in 24-hour format.
             - And times like "hajnali 2 óra", "2 óra", "2h" all mean 2 AM and should be parsed as 02:00 in 24-hour format.
-            - In hungarian "1.00" also means "1 óra".
+            - "1.00" in time context means "1 óra", "2.00" means "2 óra" and so on.
 
 
         - Specific One-Time Reminders
