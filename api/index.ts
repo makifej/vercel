@@ -12,7 +12,92 @@ if (!GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not defined in environment variables");
 }
 
+// ---------------------------------------------------------------------------
+// Rate limiting — two layers, both env-tunable without redeploying code:
+//  1) per-IP window: stops a single source hammering the endpoint;
+//  2) GLOBAL minute + daily ceilings: cap the total Gemini spend no matter how
+//     many IPs the traffic rotates through (VPN/botnet scenario) — the global
+//     counters are what actually price-cap the worst case.
+// Counters live in Upstash Redis when UPSTASH_REDIS_REST_URL/_TOKEN are set
+// (exact, shared across serverless instances); otherwise an in-memory
+// per-instance fallback still catches sequential hammering. The Android app
+// already maps HTTP 429 to a friendly "try again" error, so no client change
+// is needed.
+// ---------------------------------------------------------------------------
+const RL_PER_IP_PER_MIN = parseInt(process.env.RL_PER_IP_PER_MIN || "12", 10);
+const RL_GLOBAL_PER_MIN = parseInt(process.env.RL_GLOBAL_PER_MIN || "120", 10);
+const RL_GLOBAL_PER_DAY = parseInt(process.env.RL_GLOBAL_PER_DAY || "2000", 10);
+// The Vercel Marketplace "Upstash for Redis" resource injects KV_REST_API_*; a directly
+// created Upstash database injects UPSTASH_REDIS_REST_*. Same REST protocol — accept both.
+const UPSTASH_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const memBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function memIncr(key: string, ttlSeconds: number): number {
+  const now = Date.now();
+  if (memBuckets.size > 5000) {
+    for (const [k, b] of memBuckets) if (b.resetAt <= now) memBuckets.delete(k);
+  }
+  const bucket = memBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    memBuckets.set(key, { count: 1, resetAt: now + ttlSeconds * 1000 });
+    return 1;
+  }
+  bucket.count += 1;
+  return bucket.count;
+}
+
+async function redisIncr(key: string, ttlSeconds: number): Promise<number | null> {
+  try {
+    const r = await axios.get(`${UPSTASH_URL}/incr/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+      timeout: 1500,
+    });
+    const count = r.data?.result as number;
+    if (count === 1) {
+      await axios.get(`${UPSTASH_URL}/expire/${encodeURIComponent(key)}/${ttlSeconds}`, {
+        headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+        timeout: 1500,
+      });
+    }
+    return count;
+  } catch {
+    return null; // Redis unreachable → fall back to memory rather than blocking users
+  }
+}
+
+async function incrWindow(key: string, ttlSeconds: number): Promise<number> {
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    const n = await redisIncr(key, ttlSeconds);
+    if (n !== null) return n;
+  }
+  return memIncr(key, ttlSeconds);
+}
+
+function clientIp(req: express.Request): string {
+  const forwarded = (req.headers["x-forwarded-for"] as string) || "";
+  return forwarded.split(",")[0].trim() || req.socket?.remoteAddress || "unknown";
+}
+
+/** Returns true when the request may proceed; otherwise it has already sent 429. */
+async function allowRequest(req: express.Request, res: express.Response): Promise<boolean> {
+  const minuteWindow = Math.floor(Date.now() / 60_000);
+  const dayWindow = new Date().toISOString().slice(0, 10);
+  const [ipCount, globalMinute, globalDay] = await Promise.all([
+    incrWindow(`rl:ip:${clientIp(req)}:${minuteWindow}`, 120),
+    incrWindow(`rl:global:m:${minuteWindow}`, 120),
+    incrWindow(`rl:global:d:${dayWindow}`, 90_000),
+  ]);
+  if (ipCount > RL_PER_IP_PER_MIN || globalMinute > RL_GLOBAL_PER_MIN || globalDay > RL_GLOBAL_PER_DAY) {
+    res.status(429).send({ error: "Too many requests" });
+    return false;
+  }
+  return true;
+}
+
 app.post("/chat", async (req, res): Promise<any> => {
+  if (!(await allowRequest(req, res))) return;
   const { command } = req.body;
 
   if (!command) {
@@ -238,6 +323,7 @@ app.post("/chat", async (req, res): Promise<any> => {
 });
 
 app.post("/timeline", async (req, res): Promise<any> => {
+  if (!(await allowRequest(req, res))) return;
   const { command } = req.body;
 
   if (!command) {
