@@ -96,6 +96,94 @@ async function allowRequest(req: express.Request, res: express.Response): Promis
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// Deterministic calendar reference — the weekday/relative-date fix.
+//
+// WHY: LLMs cannot reliably do calendar arithmetic. Given only "Current Date is
+// 2026-07-10 14:32" the model must derive that this is a FRIDAY and then count
+// weeks — it consistently gets both wrong (observed live: "jövő hét csütörtök"
+// resolved to a Friday date, "szerda" to a Thursday date, "két hét múlva" to
+// +3 weeks). The fix: WE compute a 4-week date⇄weekday lookup table plus the
+// exact dates for every "next week X" / "in N weeks" phrase in TypeScript
+// (exact by construction), inject it into the prompt, and forbid the model
+// from doing any weekday math itself — it only looks dates up.
+//
+// The anchor date is parsed from the "Current Date is yyyy-MM-dd HH:mm" suffix
+// that both the Android and iOS apps already append to every command — that is
+// the USER'S wall clock in their own timezone. We rebuild it as a UTC Date and
+// only ever read it back with getUTC* accessors, so the server's timezone
+// never contaminates the user's calendar. Fallback (no suffix found): server
+// clock — still better than letting the model guess.
+// ---------------------------------------------------------------------------
+const DAY_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAY_HU = ["vasárnap", "hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat"];
+
+function pad2(n: number): string {
+  return n < 10 ? "0" + n : String(n);
+}
+
+/** dd/mm/yyyy — the exact output date format the schema demands. */
+function fmtDate(d: Date): string {
+  return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+
+function calendarReference(command: string): string {
+  const m = command.match(/Current Date is (\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  const base = m
+    ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]))
+    : new Date();
+  const addDays = (n: number) => new Date(base.getTime() + n * 86_400_000);
+  const dow = base.getUTCDay();
+
+  const tableRows: string[] = [];
+  for (let i = 0; i <= 28; i++) {
+    const d = addDays(i);
+    const w = d.getUTCDay();
+    tableRows.push(
+      `          ${fmtDate(d)} = ${DAY_EN[w]} / ${DAY_HU[w]}${i === 0 ? "   <-- TODAY / MA" : ""}`
+    );
+  }
+
+  // First Monday strictly after the current (Monday-started) week ends.
+  // Sun(0)→+1, Mon(1)→+7, Tue(2)→+6, ... Sat(6)→+2.
+  const daysUntilNextMonday = ((8 - dow) % 7) || 7;
+  const nextWeekRows = DAY_EN.map((_, k) => {
+    // k iterates Monday..Sunday of next week (offset 0..6 from next Monday)
+    const d = addDays(daysUntilNextMonday + k);
+    const w = d.getUTCDay();
+    return `          "next ${DAY_EN[w]}" / "jövő ${DAY_HU[w]}" = ${fmtDate(d)}`;
+  });
+
+  const hhmm = `${pad2(base.getUTCHours())}:${pad2(base.getUTCMinutes())}`;
+
+  return `
+        CALENDAR REFERENCE (authoritative — computed by a real calendar, NOT by you):
+        Today is ${DAY_EN[dow]} / ${DAY_HU[dow]}, ${fmtDate(base)}, current time ${hhmm}.
+
+        Date-to-weekday table for the next 4 weeks:
+${tableRows.join("\n")}
+
+        MANDATORY date resolution rules — NEVER do weekday or week arithmetic yourself,
+        ALWAYS resolve by looking up the table and mappings above/below:
+        - Bare day name ("csütörtökön", "on Thursday"): the FIRST date in the table
+          strictly after today whose weekday matches (today itself only if the
+          requested time is still in the future).
+        - "jövő hét <day>" / "jövő <day>" / "next <day>" / "<day> next week" — the
+          named day of NEXT week (the week starting Monday ${fmtDate(addDays(daysUntilNextMonday))}):
+${nextWeekRows.join("\n")}
+        - "jövő héten" / "next week" with NO day named = ${fmtDate(addDays(7))}.
+        - "egy hét múlva" / "in a week" = ${fmtDate(addDays(7))}.
+        - "két hét múlva" / "in two weeks" = ${fmtDate(addDays(14))}.
+        - "három hét múlva" / "in three weeks" = ${fmtDate(addDays(21))}.
+        - "négy hét múlva" / "in four weeks" = ${fmtDate(addDays(28))}.
+        - "N nap múlva" / "in N days" = today + N days; look the result up in the table.
+        - "holnap" / "tomorrow" = ${fmtDate(addDays(1))}; "holnapután" / "day after tomorrow" = ${fmtDate(addDays(2))}.
+        - Every resolved date MUST appear in the table with the weekday the user named.
+          If your candidate date's weekday does not match the user's word, you made an
+          error — re-read the table and correct it.
+    `;
+}
+
 app.post("/chat", async (req, res): Promise<any> => {
   if (!(await allowRequest(req, res))) return;
   const { command } = req.body;
@@ -250,17 +338,19 @@ app.post("/chat", async (req, res): Promise<any> => {
 
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
-          - When parsing day names (e.g. Monday / Hétfő), resolve them to the next correct calendar date using the following rule:
-            - Compare the target weekday to the current date’s weekday.
-            - If the day is **later in the week**, move forward to that day this week.
-            - If the day is **today but the time has already passed**, or if the day is **earlier in the week**, move to that day **next week**.
-            - Always ensure the final resolved date’s weekday **matches the name provided** (e.g. "Friday" must resolve to a date where weekday = 6).
+          - When parsing day names (e.g. Monday / Hétfő) or relative-date phrases
+            ("jövő hét csütörtök", "két hét múlva", "next Thursday", "in two weeks"),
+            NEVER calculate the date yourself. A CALENDAR REFERENCE block with an
+            exact date-to-weekday table and pre-resolved mappings is provided with
+            the request — resolving any day or date expression MUST be a pure
+            lookup in that block. The final resolved date's weekday must match the
+            day name the user said, as verified against the table.
           - Do not use \`\`\`json or \`\`\` tags. Return single raw JSON only.
     `;
 
   const userPrompt = `
         Parse this reminder request: "${command}"
-        
+        ${calendarReference(command)}
         Return ONLY valid JSON in this exact format:
         {
             "title": "activity name",
@@ -352,17 +442,19 @@ app.post("/timeline", async (req, res): Promise<any> => {
 
         IMPORTANT:
           - Return ONLY valid JSON without any markdown formatting, code blocks, or extra text.
-          - When parsing day names (e.g. Monday / Hétfő), resolve them to the next correct calendar date using the following rule:
-            - Compare the target weekday to the current date's weekday.
-            - If the day is **later in the week**, move forward to that day this week.
-            - If the day is **today but the time has already passed**, or if the day is **earlier in the week**, move to that day **next week**.
-            - Always ensure the final resolved date's weekday **matches the name provided** (e.g. "Friday" must resolve to a date where weekday = 6).
+          - When parsing day names (e.g. Monday / Hétfő) or relative-date phrases
+            ("jövő hét csütörtök", "két hét múlva", "next Thursday", "in two weeks"),
+            NEVER calculate the date yourself. A CALENDAR REFERENCE block with an
+            exact date-to-weekday table and pre-resolved mappings is provided with
+            the request — resolving any day or date expression MUST be a pure
+            lookup in that block. The final resolved date's weekday must match the
+            day name the user said, as verified against the table.
           - Do not use \`\`\`json or \`\`\` tags. Return single raw JSON only.
     `;
 
   const userPrompt = `
         Parse this task timeline request: "${command}"
-        
+        ${calendarReference(command)}
         Return ONLY valid JSON in this exact format (an array of task objects):
         [
             {
