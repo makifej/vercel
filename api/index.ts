@@ -21,6 +21,17 @@ if (!GEMINI_API_KEY) {
 // / upgraded Google API key first (then set GEMINI_MODEL to the working Pro id).
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+// Optional thinking control for the 3.x models. Gemini 3.x uses a thinkingLevel
+// ("low" | "high"), NOT a numeric budget — and the Pro models REJECT budget 0
+// ("This model only works in thinking mode"). Setting GEMINI_THINKING_LEVEL=low makes
+// gemini-3.1-pro-preview answer in ~4s instead of ~10s while keeping Pro's capability
+// (a "fast Pro"). Empty = the model's own default thinking. Only sent when non-empty, so
+// models that don't accept it (or when we want the default) are unaffected.
+const GEMINI_THINKING_LEVEL = process.env.GEMINI_THINKING_LEVEL || "";
+const THINKING_CONFIG = GEMINI_THINKING_LEVEL
+  ? { thinkingConfig: { thinkingLevel: GEMINI_THINKING_LEVEL } }
+  : {};
+
 // ---------------------------------------------------------------------------
 // Rate limiting — two layers, both env-tunable without redeploying code:
 //  1) per-IP window: stops a single source hammering the endpoint;
@@ -400,6 +411,7 @@ app.post("/chat", async (req, res): Promise<any> => {
     generationConfig: {
       temperature: 0.1,
       responseMimeType: "application/json",
+      ...THINKING_CONFIG,
     },
   };
 
@@ -511,6 +523,7 @@ app.post("/timeline", async (req, res): Promise<any> => {
     generationConfig: {
       temperature: 0.1,
       responseMimeType: "application/json",
+      ...THINKING_CONFIG,
     },
   };
 
