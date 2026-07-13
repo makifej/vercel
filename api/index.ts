@@ -414,7 +414,21 @@ app.post("/chat", async (req, res): Promise<any> => {
       }
     );
 
-    res.send(response.data.candidates[0].content.parts[0].text);
+    // /chat must return a SINGLE reminder object. Flash does; the Pro (3.x) models tend
+    // to wrap even a single reminder in a JSON array ([{...}]), which the Android client
+    // (decodes one object, not a list) can't parse. Normalise: unwrap a top-level array to
+    // its first element. Non-JSON or already-an-object passes through untouched.
+    const rawText = response.data.candidates[0].content.parts[0].text;
+    let out = rawText;
+    try {
+      const parsed = JSON.parse(rawText);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        out = JSON.stringify(parsed[0]);
+      }
+    } catch {
+      // Model returned something we can't parse here — send as-is (unchanged behaviour).
+    }
+    res.send(out);
   } catch (error) {
     console.error("Error calling OpenAI API:", error);
     res.status(500).send({ error: `Failed to fetch response from OpenAI\n${error}` });
@@ -511,7 +525,20 @@ app.post("/timeline", async (req, res): Promise<any> => {
       }
     );
 
-    res.send(response.data.candidates[0].content.parts[0].text);
+    // /timeline must return a JSON ARRAY of task objects. If a model ever returns a bare
+    // single object (e.g. a one-task day), wrap it so the Android client (decodes a list)
+    // still parses it. Arrays and non-JSON pass through unchanged.
+    const rawText = response.data.candidates[0].content.parts[0].text;
+    let out = rawText;
+    try {
+      const parsed = JSON.parse(rawText);
+      if (!Array.isArray(parsed)) {
+        out = JSON.stringify([parsed]);
+      }
+    } catch {
+      // Unparseable here — send as-is (unchanged behaviour).
+    }
+    res.send(out);
   } catch (error) {
     console.error("Error calling Gemini API:", error);
     res.status(500).send({ error: `Failed to fetch response from Gemini\n${error}` });
