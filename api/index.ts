@@ -13,10 +13,13 @@ if (!GEMINI_API_KEY) {
 }
 
 // Which Gemini model both endpoints (/chat + /timeline) call. Single source of truth,
-// env-overridable WITHOUT a code deploy: set GEMINI_MODEL in Vercel to flip. Default is
-// "gemini-2.5-pro" for the current quality test (user: Flash "szart se ér"); revert to
-// "gemini-2.5-flash" (env var or this default) to go back to the cheaper/faster model.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-pro";
+// env-overridable WITHOUT a code change: set GEMINI_MODEL in Vercel to flip.
+// NOTE (2026-07-13): "gemini-2.5-pro" is NOT usable with this API key — Google returns
+// 404 "no longer available to new users" (the model is gated to existing paying users).
+// The newer 3.x-pro-preview models also 404 on this key/tier. So the default stays on the
+// known-good, accessible "gemini-2.5-flash"; accessing a Pro model needs a billing-enabled
+// / upgraded Google API key first (then set GEMINI_MODEL to the working Pro id).
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 // ---------------------------------------------------------------------------
 // Rate limiting — two layers, both env-tunable without redeploying code:
