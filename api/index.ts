@@ -32,6 +32,36 @@ const THINKING_CONFIG = GEMINI_THINKING_LEVEL
   ? { thinkingConfig: { thinkingLevel: GEMINI_THINKING_LEVEL } }
   : {};
 
+// Calls Gemini and returns the first response whose text `normalise()` accepts (returns the
+// exact string to send to the client, or null when the model's output was invalid/TRUNCATED
+// JSON). The 3.x thinking Pro models intermittently emit a cut-off JSON object even with
+// finishReason=STOP (proven live: the same command parses one call, truncates the next) —
+// so a single call is not reliable for ANY of them. Retrying server-side (up to `maxAttempts`)
+// is far more robust than the Android client's single silent retry, which was also failing.
+// If every attempt is bad, returns the last raw text so behaviour is no worse than before.
+async function generateNormalisedJson(
+  requestBody: any,
+  normalise: (parsed: any) => string | null,
+  maxAttempts = 3
+): Promise<string> {
+  let lastText = "";
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      requestBody,
+      { headers: { "Content-Type": "application/json" } }
+    );
+    lastText = response.data.candidates[0].content.parts[0].text;
+    try {
+      const norm = normalise(JSON.parse(lastText));
+      if (norm !== null) return norm;
+    } catch {
+      // Invalid / truncated JSON — retry.
+    }
+  }
+  return lastText;
+}
+
 // ---------------------------------------------------------------------------
 // Rate limiting — two layers, both env-tunable without redeploying code:
 //  1) per-IP window: stops a single source hammering the endpoint;
@@ -416,34 +446,16 @@ app.post("/chat", async (req, res): Promise<any> => {
   };
 
   try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      requestBody,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    // /chat must return a SINGLE reminder object. Flash does; the Pro (3.x) models tend
-    // to wrap even a single reminder in a JSON array ([{...}]), which the Android client
-    // (decodes one object, not a list) can't parse. Normalise: unwrap a top-level array to
-    // its first element. Non-JSON or already-an-object passes through untouched.
-    const rawText = response.data.candidates[0].content.parts[0].text;
-    let out = rawText;
-    try {
-      const parsed = JSON.parse(rawText);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        out = JSON.stringify(parsed[0]);
-      }
-    } catch {
-      // Model returned something we can't parse here — send as-is (unchanged behaviour).
-    }
+    // /chat must return a SINGLE reminder object. Unwrap a top-level array (Pro wraps even
+    // one reminder in [ ... ]); the helper retries on truncated/invalid JSON.
+    const out = await generateNormalisedJson(requestBody, (parsed) => {
+      const obj = Array.isArray(parsed) ? parsed[0] : parsed;
+      return obj && typeof obj === "object" ? JSON.stringify(obj) : null;
+    });
     res.send(out);
   } catch (error) {
-    console.error("Error calling OpenAI API:", error);
-    res.status(500).send({ error: `Failed to fetch response from OpenAI\n${error}` });
+    console.error("Error calling Gemini API:", error);
+    res.status(500).send({ error: `Failed to fetch response from Gemini\n${error}` });
   }
 });
 
@@ -528,29 +540,12 @@ app.post("/timeline", async (req, res): Promise<any> => {
   };
 
   try {
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      requestBody,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    // /timeline must return a JSON ARRAY of task objects. If a model ever returns a bare
-    // single object (e.g. a one-task day), wrap it so the Android client (decodes a list)
-    // still parses it. Arrays and non-JSON pass through unchanged.
-    const rawText = response.data.candidates[0].content.parts[0].text;
-    let out = rawText;
-    try {
-      const parsed = JSON.parse(rawText);
-      if (!Array.isArray(parsed)) {
-        out = JSON.stringify([parsed]);
-      }
-    } catch {
-      // Unparseable here — send as-is (unchanged behaviour).
-    }
+    // /timeline must return a JSON ARRAY of task objects. Wrap a bare object (one-task day);
+    // the helper retries on truncated/invalid JSON.
+    const out = await generateNormalisedJson(requestBody, (parsed) => {
+      if (Array.isArray(parsed)) return JSON.stringify(parsed);
+      return parsed && typeof parsed === "object" ? JSON.stringify([parsed]) : null;
+    });
     res.send(out);
   } catch (error) {
     console.error("Error calling Gemini API:", error);
