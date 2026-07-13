@@ -32,13 +32,39 @@ const THINKING_CONFIG = GEMINI_THINKING_LEVEL
   ? { thinkingConfig: { thinkingLevel: GEMINI_THINKING_LEVEL } }
   : {};
 
-// Calls Gemini and returns the first response whose text `normalise()` accepts (returns the
-// exact string to send to the client, or null when the model's output was invalid/TRUNCATED
-// JSON). The 3.x thinking Pro models intermittently emit a cut-off JSON object even with
-// finishReason=STOP (proven live: the same command parses one call, truncates the next) —
-// so a single call is not reliable for ANY of them. Retrying server-side (up to `maxAttempts`)
-// is far more robust than the Android client's single silent retry, which was also failing.
-// If every attempt is bad, returns the last raw text so behaviour is no worse than before.
+// Repairs a JSON string the model TRUNCATED at the end — the proven failure mode of the
+// 3.x thinking Pro models in JSON mode is a complete object missing only its trailing `}`
+// (finishReason=STOP; the tail "...syncToCalendar": false" with no closing brace). We scan
+// once, close an open string if needed, drop a dangling comma, and append the closers for
+// every still-open { or [. Returns the parsed value, or null if it still won't parse.
+function parseWithRepair(text: string): any | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    let s = text.trim().replace(/,\s*$/, "");
+    let inStr = false, esc = false;
+    const stack: string[] = [];
+    for (const ch of s) {
+      if (esc) { esc = false; continue; }
+      if (ch === "\\") { esc = true; continue; }
+      if (ch === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (ch === "{" || ch === "[") stack.push(ch);
+      else if (ch === "}" || ch === "]") stack.pop();
+    }
+    if (inStr) s += '"';
+    s = s.replace(/,\s*$/, "");
+    for (let i = stack.length - 1; i >= 0; i--) s += stack[i] === "{" ? "}" : "]";
+    try { return JSON.parse(s); } catch { return null; }
+  }
+}
+
+// Returns the first Gemini response whose (parsed-or-repaired) JSON `normalise()` accepts —
+// the exact string to send the client. The 3.x thinking Pro models intermittently truncate
+// the JSON even with finishReason=STOP (proven live), so one call is unreliable for ANY of
+// them. First [parseWithRepair] rescues the common "missing trailing brace" case with no
+// extra latency; only if that fails does it retry the whole call (up to `maxAttempts`). This
+// server-side repair+retry is far more robust than the Android client's single silent retry.
 async function generateNormalisedJson(
   requestBody: any,
   normalise: (parsed: any) => string | null,
@@ -52,11 +78,10 @@ async function generateNormalisedJson(
       { headers: { "Content-Type": "application/json" } }
     );
     lastText = response.data.candidates[0].content.parts[0].text;
-    try {
-      const norm = normalise(JSON.parse(lastText));
+    const parsed = parseWithRepair(lastText);
+    if (parsed !== null) {
+      const norm = normalise(parsed);
       if (norm !== null) return norm;
-    } catch {
-      // Invalid / truncated JSON — retry.
     }
   }
   return lastText;
