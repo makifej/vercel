@@ -12,6 +12,12 @@ if (!GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not defined in environment variables");
 }
 
+// Which Gemini model both endpoints (/chat + /timeline) call. Single source of truth,
+// env-overridable WITHOUT a code deploy: set GEMINI_MODEL in Vercel to flip. Default is
+// "gemini-2.5-pro" for the current quality test (user: Flash "szart se ér"); revert to
+// "gemini-2.5-flash" (env var or this default) to go back to the cheaper/faster model.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-pro";
+
 // ---------------------------------------------------------------------------
 // Rate limiting — two layers, both env-tunable without redeploying code:
 //  1) per-IP window: stops a single source hammering the endpoint;
@@ -396,7 +402,7 @@ app.post("/chat", async (req, res): Promise<any> => {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
       requestBody,
       {
         headers: {
@@ -493,7 +499,7 @@ app.post("/timeline", async (req, res): Promise<any> => {
 
   try {
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
       requestBody,
       {
         headers: {
