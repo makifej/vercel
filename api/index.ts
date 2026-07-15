@@ -28,20 +28,54 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 // (a "fast Pro"). Empty = the model's own default thinking. Only sent when non-empty, so
 // models that don't accept it (or when we want the default) are unaffected.
 const GEMINI_THINKING_LEVEL = process.env.GEMINI_THINKING_LEVEL || "";
+// 2.5-family speed fix (measured live 2026-07-15): gemini-2.5-flash "thinks" by default and
+// burned 288-550 thought-tokens even on a one-line command — 2.0-3.8s versus 0.9-1.3s with
+// thinkingBudget=0, identical output. Structured extraction with our explicit rules doesn't
+// need thinking, so the budget defaults to 0; GEMINI_THINKING_BUDGET in Vercel re-enables it
+// (e.g. "-1" = dynamic) without a code change. thinkingLevel (3.x naming, above) wins if set.
+const GEMINI_THINKING_BUDGET = process.env.GEMINI_THINKING_BUDGET ?? "0";
+// TEMP DIAG (2026-07-15): az utolso Gemini-hivassorozat idozitese, x-diag fejlecbe.
+let LAST_GEMINI_DIAG = "";
 const THINKING_CONFIG = GEMINI_THINKING_LEVEL
   ? { thinkingConfig: { thinkingLevel: GEMINI_THINKING_LEVEL } }
-  : {};
+  : GEMINI_THINKING_BUDGET !== "" && GEMINI_MODEL.startsWith("gemini-2.5")
+    ? { thinkingConfig: { thinkingBudget: parseInt(GEMINI_THINKING_BUDGET, 10) } }
+    : {};
 
-// Repairs a JSON string the model TRUNCATED at the end — the proven failure mode of the
-// 3.x thinking Pro models in JSON mode is a complete object missing only its trailing `}`
-// (finishReason=STOP; the tail "...syncToCalendar": false" with no closing brace). We scan
-// once, close an open string if needed, drop a dangling comma, and append the closers for
-// every still-open { or [. Returns the parsed value, or null if it still won't parse.
+// Cuts the first balanced {...} or [...] region out of a reply that wraps its JSON in
+// markdown fences or prose — the model intermittently disobeys "JSON only" (proven live
+// 2026-07-15 10:23: "a koi bisztró post legyen kritikus értesítés" got a non-JSON-shaped
+// reply on every attempt, and the raw text used to reach the client as HTTP 200). A
+// truncated region (no balanced close) is returned as-is for the repair pass to finish.
+function extractJsonRegion(text: string): string | null {
+  const start = text.search(/[{\[]/);
+  if (start === -1) return null;
+  let inStr = false, esc = false, depth = 0;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (esc) { esc = false; continue; }
+    if (ch === "\\") { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === "{" || ch === "[") depth++;
+    else if (ch === "}" || ch === "]") { depth--; if (depth === 0) return text.slice(start, i + 1); }
+  }
+  return text.slice(start);
+}
+
+// Repairs a JSON string the model mangled in either proven live failure mode: TRUNCATED at
+// the end (3.x thinking Pro: a complete object missing only its trailing `}` with
+// finishReason=STOP), or wrapped in fences/prose (handled by [extractJsonRegion] first).
+// We scan once, close an open string if needed, drop a dangling comma, and append the
+// closers for every still-open { or [. Returns the parsed value, or null if it still
+// won't parse.
 function parseWithRepair(text: string): any | null {
   try {
     return JSON.parse(text);
   } catch {
-    let s = text.trim().replace(/,\s*$/, "");
+    const region = extractJsonRegion(text);
+    if (region === null) return null;
+    let s = region.trim().replace(/,\s*$/, "");
     let inStr = false, esc = false;
     const stack: string[] = [];
     for (const ch of s) {
@@ -65,6 +99,11 @@ function parseWithRepair(text: string): any | null {
 // them. First [parseWithRepair] rescues the common "missing trailing brace" case with no
 // extra latency; only if that fails does it retry the whole call (up to `maxAttempts`). This
 // server-side repair+retry is far more robust than the Android client's single silent retry.
+//
+// THROWS when every attempt failed: the old `return lastText` fallback sent the raw
+// unparseable reply to the client as HTTP 200, which the Android app's strict decoder
+// surfaced as an opaque ParseError (live 2026-07-15 10:23). A thrown error becomes the
+// caller's 500 — an honest, retryable signal instead of a fake success.
 async function generateNormalisedJson(
   requestBody: any,
   normalise: (parsed: any) => string | null,
@@ -72,19 +111,31 @@ async function generateNormalisedJson(
 ): Promise<string> {
   let lastText = "";
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const tCall = Date.now();
     const response = await axios.post(
       `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
       requestBody,
       { headers: { "Content-Type": "application/json" } }
     );
     lastText = response.data.candidates[0].content.parts[0].text;
+    const usage = response.data.usageMetadata || {};
+    // TEMP DIAG (2026-07-15 lassúság-vadászat): per-hívás bontás a runtime logba.
+    LAST_GEMINI_DIAG =
+      `a${attempt + 1}=${Date.now() - tCall}ms model=${GEMINI_MODEL} ` +
+      `pTok=${usage.promptTokenCount} thinkTok=${usage.thoughtsTokenCount ?? 0} ` +
+      `outTok=${usage.candidatesTokenCount}`;
+    console.log("gemini " + LAST_GEMINI_DIAG);
     const parsed = parseWithRepair(lastText);
     if (parsed !== null) {
       const norm = normalise(parsed);
       if (norm !== null) return norm;
     }
   }
-  return lastText;
+  console.error(
+    `generateNormalisedJson: no parseable JSON after ${maxAttempts} attempts; ` +
+      `last reply head: ${lastText.slice(0, 300)}`
+  );
+  throw new Error(`Gemini returned no parseable JSON after ${maxAttempts} attempts`);
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +311,9 @@ ${nextWeekRows.join("\n")}
 }
 
 app.post("/chat", async (req, res): Promise<any> => {
+  const tReq = Date.now();
   if (!(await allowRequest(req, res))) return;
+  const tRl = Date.now();
   const { command } = req.body;
 
   if (!command) {
@@ -477,6 +530,7 @@ app.post("/chat", async (req, res): Promise<any> => {
       const obj = Array.isArray(parsed) ? parsed[0] : parsed;
       return obj && typeof obj === "object" ? JSON.stringify(obj) : null;
     });
+    res.setHeader("x-diag", `rl=${tRl - tReq}ms gemini=${Date.now() - tRl}ms ${LAST_GEMINI_DIAG}`);
     res.send(out);
   } catch (error) {
     console.error("Error calling Gemini API:", error);
