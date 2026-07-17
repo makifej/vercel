@@ -223,6 +223,83 @@ async function allowRequest(req: express.Request, res: express.Response): Promis
 }
 
 // ---------------------------------------------------------------------------
+// Promó kódok — SZERVER-oldali beváltás (user-kérés 2026-07-17: "akarok látni
+// számokat... egy kód csak egyszer, egy telefonon legyen felhasználható").
+//
+// A v1.0.7-es kliens-oldali készlet (5 kód, egyenként +20 AI-hívás) korlátja az
+// volt, hogy nem számolt semmit és több eszközön is beváltható volt. Mostantól a
+// beváltás itt dől el, atomian: SET NX a `promo:used:<kód>` kulcsra — az ELSŐ
+// eszköz nyeri a kódot, minden további kérés (bármely eszközről, újratelepítés
+// után is) "used"-ot kap. Redis-kiesésnél FAIL-CLOSED (503): kétszer-beváltást
+// sosem engedünk memória-fallbackkel.
+//
+// Statisztika: GET /promo/stats?key=<PROMO_STATS_KEY env> — kódonként mutatja,
+// be lett-e váltva, mikor és melyik eszköz-azonosítóval.
+// ---------------------------------------------------------------------------
+const PROMO_CALLS_PER_CODE = parseInt(process.env.PROMO_CALLS_PER_CODE || "20", 10);
+const PROMO_CODES: string[] = (process.env.PROMO_CODES ||
+  "SR-AI-7F3K9Q,SR-AI-P2M8XW,SR-AI-4B6VZ1,SR-AI-9H5N2T,SR-AI-K3RJ8D,SR-AI-QA0000")
+  .split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+
+async function redisSetNx(key: string, value: string): Promise<boolean | null> {
+  try {
+    const r = await axios.get(
+      `${UPSTASH_URL}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}?NX=true`,
+      { headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }, timeout: 2500 },
+    );
+    return r.data?.result === "OK"; // null result = NX vesztett (már létezik)
+  } catch {
+    return null; // Redis elérhetetlen
+  }
+}
+
+async function redisGet(key: string): Promise<string | null | undefined> {
+  try {
+    const r = await axios.get(`${UPSTASH_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` },
+      timeout: 2500,
+    });
+    return r.data?.result ?? null; // null = nincs ilyen kulcs
+  } catch {
+    return undefined; // undefined = Redis-hiba (megkülönböztetve a "nincs"-től)
+  }
+}
+
+app.post("/promo", async (req, res): Promise<any> => {
+  if (!(await allowRequest(req, res))) return;
+  const code = String(req.body?.code || "").trim().toUpperCase();
+  const deviceId = String(req.body?.deviceId || "").trim();
+  if (!code || !deviceId) return res.send({ ok: false, reason: "invalid" });
+  if (!PROMO_CODES.includes(code)) return res.send({ ok: false, reason: "invalid" });
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    return res.status(503).send({ ok: false, reason: "unavailable" });
+  }
+  const claimed = await redisSetNx(
+    `promo:used:${code}`,
+    `${deviceId}|${new Date().toISOString()}`,
+  );
+  if (claimed === null) return res.status(503).send({ ok: false, reason: "unavailable" });
+  if (!claimed) return res.send({ ok: false, reason: "used" });
+  return res.send({ ok: true, calls: PROMO_CALLS_PER_CODE });
+});
+
+app.get("/promo/stats", async (req, res): Promise<any> => {
+  const adminKey = process.env.PROMO_STATS_KEY || "";
+  if (!adminKey || req.query.key !== adminKey) return res.status(403).send({ error: "forbidden" });
+  const rows = await Promise.all(
+    PROMO_CODES.map(async (code) => {
+      const v = await redisGet(`promo:used:${code}`);
+      if (v === undefined) return { code, status: "error" };
+      if (v === null) return { code, status: "unused" };
+      const [deviceId, redeemedAt] = v.split("|");
+      return { code, status: "redeemed", deviceId, redeemedAt };
+    }),
+  );
+  const redeemed = rows.filter((r) => r.status === "redeemed").length;
+  return res.send({ redeemed, total: PROMO_CODES.length, callsPerCode: PROMO_CALLS_PER_CODE, rows });
+});
+
+// ---------------------------------------------------------------------------
 // Deterministic calendar reference — the weekday/relative-date fix.
 //
 // WHY: LLMs cannot reliably do calendar arithmetic. Given only "Current Date is
