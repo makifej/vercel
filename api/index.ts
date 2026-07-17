@@ -406,7 +406,8 @@ app.post("/chat", async (req, res): Promise<any> => {
           - Set title for all reminders in English or Hungarian based on the command
           - Set description in English or Hungarian based on the command or null for all reminders
           - Set categories from one of these:
-            - fitness, health, mind, todo, finance, creativity, social
+            - fitness, health, mind, todo, finance, creativity, social, car, baby
+          - If the user explicitly names a category (e.g. "baba kategória", "autó kategóriába"), that category ALWAYS wins over your own guess. Hungarian names map as: autó/kocsi -> car, baba -> baby, egészség -> health, elme -> mind, fitnesz -> fitness, teendők -> todo, pénzügyek -> finance, kreativitás -> creativity, közösségi -> social.
           - Follow below instructions for remaining fields
           - syncToCalendar shall be true when user wants to sync the reminder to their calendar, otherwise false.
           - specificTime shall always be according to Current Date.
@@ -632,7 +633,7 @@ app.post("/timeline", async (req, res): Promise<any> => {
           - For each task identified in the command, create a separate JSON object within the array.
           - Set 'title' for each task in English or Hungarian based on the command.
           - Set 'description' in English or Hungarian based on the command, or null if no specific description is provided.
-          - Set 'category' from one of these: fitness, health, mind, todo, finance, creativity, social. Choose the most relevant category.
+          - Set 'category' from one of these: fitness, health, mind, todo, finance, creativity, social, car, baby. Choose the most relevant category. If the user explicitly names a category (e.g. "baba kategória", "autó kategóriába"), that category ALWAYS wins (autó/kocsi -> car, baba -> baby, egészség -> health, elme -> mind).
           - Set 'syncToCalendar' true when user wants to sync the task to their calendar, otherwise false.
           - 'startTime' and 'endTime' shall always be in 'dd/mm/yyyy HH:mm' format.
             - If only a time is specified (e.g., "10 AM"), assume it's for the current date.
