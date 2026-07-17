@@ -243,8 +243,10 @@ const PROMO_CODES: string[] = (process.env.PROMO_CODES ||
 
 async function redisSetNx(key: string, value: string): Promise<boolean | null> {
   try {
+    // Az Upstash REST a SET opciókat PATH-szegmensként várja (…/set/kulcs/érték/NX);
+    // a ?NX=true query-forma "ERR syntax error"-t ad (élőben mérve, 2026-07-17).
     const r = await axios.get(
-      `${UPSTASH_URL}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}?NX=true`,
+      `${UPSTASH_URL}/set/${encodeURIComponent(key)}/${encodeURIComponent(value)}/NX`,
       { headers: { Authorization: `Bearer ${UPSTASH_TOKEN}` }, timeout: 2500 },
     );
     return r.data?.result === "OK"; // null result = NX vesztett (már létezik)
