@@ -241,6 +241,16 @@ const PROMO_CODES: string[] = (process.env.PROMO_CODES ||
   "SR-AI-7F3K9Q,SR-AI-P2M8XW,SR-AI-4B6VZ1,SR-AI-9H5N2T,SR-AI-K3RJ8D,SR-AI-QA0000")
   .split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
 
+// KORLÁTLAN kódok (2026-07-27): a tulajdonos saját készüléké. A kliens a szervertől
+// kapott hívás-számot írja jóvá, ezért egy elég nagy szám gyakorlatilag korlátlan —
+// nem kell hozzá kliens-frissítés. 1 000 000 hívás bőven Int-biztos (nincs túlcsordulás).
+//
+// A kódok CSAK env-ből jönnek, SOHA nem a forrásból: ez a repó NYILVÁNOS, a beégetett
+// kód azonnal kiszivárogna. Ezek is egyszer-egy-eszköz szabály alá esnek (SET NX).
+const PROMO_UNLIMITED_CALLS = parseInt(process.env.PROMO_UNLIMITED_CALLS || "1000000", 10);
+const PROMO_UNLIMITED_CODES: string[] = (process.env.PROMO_UNLIMITED_CODES || "")
+  .split(",").map((c) => c.trim().toUpperCase()).filter(Boolean);
+
 async function redisSetNx(key: string, value: string): Promise<boolean | null> {
   try {
     // Az Upstash REST a SET opciókat PATH-szegmensként várja (…/set/kulcs/érték/NX);
@@ -272,7 +282,12 @@ app.post("/promo", async (req, res): Promise<any> => {
   const code = String(req.body?.code || "").trim().toUpperCase();
   const deviceId = String(req.body?.deviceId || "").trim();
   if (!code || !deviceId) return res.send({ ok: false, reason: "invalid" });
-  if (!PROMO_CODES.includes(code)) return res.send({ ok: false, reason: "invalid" });
+  // A korlátlan kódok ugyanúgy egyszer-egy-eszköz szabály alá esnek, csak a jóváírt
+  // hívás-szám más — ezért itt csak az ÉRVÉNYESSÉG uniója számít.
+  const unlimited = PROMO_UNLIMITED_CODES.includes(code);
+  if (!unlimited && !PROMO_CODES.includes(code)) {
+    return res.send({ ok: false, reason: "invalid" });
+  }
   if (!UPSTASH_URL || !UPSTASH_TOKEN) {
     return res.status(503).send({ ok: false, reason: "unavailable" });
   }
@@ -282,23 +297,33 @@ app.post("/promo", async (req, res): Promise<any> => {
   );
   if (claimed === null) return res.status(503).send({ ok: false, reason: "unavailable" });
   if (!claimed) return res.send({ ok: false, reason: "used" });
-  return res.send({ ok: true, calls: PROMO_CALLS_PER_CODE });
+  return res.send({ ok: true, calls: unlimited ? PROMO_UNLIMITED_CALLS : PROMO_CALLS_PER_CODE });
 });
 
 app.get("/promo/stats", async (req, res): Promise<any> => {
   const adminKey = process.env.PROMO_STATS_KEY || "";
   if (!adminKey || req.query.key !== adminKey) return res.status(403).send({ error: "forbidden" });
+  // A korlátlan kódok is látszanak (admin-kulcs mögött) — a tulajdonos lássa, hogy
+  // beváltotta-e már és melyik eszközön.
+  const allCodes = [...PROMO_CODES, ...PROMO_UNLIMITED_CODES];
   const rows = await Promise.all(
-    PROMO_CODES.map(async (code) => {
+    allCodes.map(async (code) => {
+      const unlimited = PROMO_UNLIMITED_CODES.includes(code);
       const v = await redisGet(`promo:used:${code}`);
-      if (v === undefined) return { code, status: "error" };
-      if (v === null) return { code, status: "unused" };
+      if (v === undefined) return { code, unlimited, status: "error" };
+      if (v === null) return { code, unlimited, status: "unused" };
       const [deviceId, redeemedAt] = v.split("|");
-      return { code, status: "redeemed", deviceId, redeemedAt };
+      return { code, unlimited, status: "redeemed", deviceId, redeemedAt };
     }),
   );
   const redeemed = rows.filter((r) => r.status === "redeemed").length;
-  return res.send({ redeemed, total: PROMO_CODES.length, callsPerCode: PROMO_CALLS_PER_CODE, rows });
+  return res.send({
+    redeemed,
+    total: allCodes.length,
+    callsPerCode: PROMO_CALLS_PER_CODE,
+    unlimitedCalls: PROMO_UNLIMITED_CALLS,
+    rows,
+  });
 });
 
 // ---------------------------------------------------------------------------
