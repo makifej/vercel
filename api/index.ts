@@ -1,6 +1,7 @@
 import express from "express";
 import axios from "axios";
 import dotenv from "dotenv";
+import { createHash } from "crypto";
 
 dotenv.config();
 const app = express();
@@ -298,6 +299,51 @@ app.post("/promo", async (req, res): Promise<any> => {
   if (claimed === null) return res.status(503).send({ ok: false, reason: "unavailable" });
   if (!claimed) return res.send({ ok: false, reason: "used" });
   return res.send({ ok: true, calls: unlimited ? PROMO_UNLIMITED_CALLS : PROMO_CALLS_PER_CODE });
+});
+
+// ---------------------------------------------------------------------------
+// PRÓBAIDŐ (2026-10-16): POST /trial, a 7 napos próbaidő kezdetének nyilvántartása.
+//
+// Miért a szerveren és nem a telefonon: ha a kezdő dátum csak a készüléken lenne, az app
+// törlése és újratelepítése nullázná, és a fizetőfal papírból lenne. Az eszköz-azonosító
+// (ANDROID_ID) viszont túléli az újratelepítést, ezért a hozzá kötött szerver-oldali
+// kezdés nem indítható újra.
+//
+// A kulcsnak SZÁNDÉKOSAN nincs lejárata: egy lejáró kulcs új próbaidőt adna.
+//
+// Az azonosítót HASH-elve tároljuk. A nyilvántartáshoz elég egy állandó, egyirányú
+// ujjlenyomat; így a tárolt adatból nem lehet visszafejteni, melyik készülékről van szó.
+//
+// A válasz a szerver mostani idejét is visszaadja: a kliens ebből számol, nem a telefon
+// órájából, amit vissza lehet tekerni.
+// ---------------------------------------------------------------------------
+function trialKey(deviceId: string): string {
+  const fingerprint = createHash("sha256").update(deviceId).digest("hex").slice(0, 32);
+  return `trial:start:${fingerprint}`;
+}
+
+app.post("/trial", async (req, res): Promise<any> => {
+  if (!(await allowRequest(req, res))) return;
+  const deviceId = String(req.body?.deviceId || "").trim();
+  if (!deviceId) return res.send({ ok: false, reason: "invalid" });
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    return res.status(503).send({ ok: false, reason: "unavailable" });
+  }
+
+  const key = trialKey(deviceId);
+  const nowIso = new Date().toISOString();
+
+  // SET NX: az ELSŐ kérés rögzíti a kezdést, minden további csak visszaolvassa.
+  const created = await redisSetNx(key, nowIso);
+  if (created === null) return res.status(503).send({ ok: false, reason: "unavailable" });
+
+  const startedAt = created ? nowIso : await redisGet(key);
+  // undefined = Redis-hiba olvasáskor; ilyenkor nem találgatunk, a kliens nyitva marad.
+  if (startedAt === undefined || startedAt === null) {
+    return res.status(503).send({ ok: false, reason: "unavailable" });
+  }
+
+  return res.send({ ok: true, startedAt, serverNow: nowIso });
 });
 
 app.get("/promo/stats", async (req, res): Promise<any> => {
