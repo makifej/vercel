@@ -41,6 +41,8 @@ jobs:
     name: Android APK
     needs: check
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -82,3 +84,20 @@ jobs:
           path: mobile/android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 30
+      # Teszteléshez: a legfrissebb APK egy gördülő pre-release-ben, telefonról közvetlenül letölthető.
+      # Forkból érkező PR-nél nem fut (ott nincs írási jog).
+      - name: APK a pixeltojas-latest pre-release-be
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk pixeltojas.apk
+          notes="Teszt-APK (debug kulccsal aláírva, nem áruházi kiadás). Commit: ${SHA}, build: $(date -u +%Y-%m-%dT%H:%MZ). Telepítés: a telefonon nyisd meg a pixeltojas.apk fájlt, és engedélyezd a telepítést ismeretlen forrásból."
+          if gh release view pixeltojas-latest -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload pixeltojas-latest pixeltojas.apk --clobber -R "$GITHUB_REPOSITORY"
+            gh release edit pixeltojas-latest --notes "$notes" -R "$GITHUB_REPOSITORY"
+          else
+            gh release create pixeltojas-latest pixeltojas.apk --prerelease --target "$SHA" \
+              --title "Pixeltojás: legfrissebb teszt-APK" --notes "$notes" -R "$GITHUB_REPOSITORY"
+          fi
