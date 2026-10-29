@@ -404,18 +404,18 @@ A kutatás szerint a permadeath alapértelmezettként stresszt okoz, opt-in „h
 | 5:33 | éhség-hívás: **1. figyelmeztetés** (értesítés) |
 | 6:00 | betegség (a kaki 2 órája a képernyőn) |
 | 6:33 | gondozási hiba (éhség) |
-| 6:40 | boldogság-hívás; 7:40 gondozási hiba (a megválaszolatlan hívások ezután 6 óránként ismétlődnek, újabb hibákkal) |
+| 6:27 | boldogság-hívás (betegség alatt ×1,5 fogyás, 7.4); 7:27 gondozási hiba (a megválaszolatlan hívások ezután 6 óránként ismétlődnek, újabb hibákkal) |
 | 8:00 | 2. kaki; egészség-értesítés (a betegség 2 órája kezeletlen) |
-| 10:25 | egészség 50 alatt, „Gyengélkedik” (értesítés) |
+| 10:23 | egészség 50 alatt, „Gyengélkedik” (értesítés) |
 | 12:00 | 3. kaki |
-| 14:43 | egészség = 0: **Kritikus** (időérzékeny értesítés, ha engedélyezett; szerverpush tartalék) |
-| 22:43 | emlékeztető: kb. 4 óra van hátra |
-| 25:43 | utolsó emlékeztető: kb. 1 óra van hátra |
-| 26:43 | halál |
+| 14:41 | egészség = 0: **Kritikus** (időérzékeny értesítés, ha engedélyezett; szerverpush tartalék) |
+| 22:41 | emlékeztető: kb. 4 óra van hátra |
+| 25:41 | utolsó emlékeztető: kb. 1 óra van hátra |
+| 26:41 | halál |
 
-Első figyelmeztetéstől a halálig 21 óra 10 perc számlálható idő. Faliórás példa: utolsó gondozás 07:00-kor, a kedvenc alvásablaka és a csendes órák 23:00-07:00 → Kritikus az 1. nap 21:43-kor, halál a 2. nap 17:43-kor (az első figyelmeztetéstől 29 óra 10 perc faliórában).
+Első figyelmeztetéstől a halálig 21 óra 8 perc számlálható idő. Faliórás példa: utolsó gondozás 07:00-kor, a kedvenc alvásablaka és a csendes órák 23:00-07:00 → Kritikus az 1. nap 21:41-kor, halál a 2. nap 17:41-kor (az első figyelmeztetéstől 29 óra 8 perc faliórában).
 
-**Idővonal 2: Klasszikus, Gyerek** (ugyanilyen feltételekkel): éhség-hívás 4:10, Kritikus 12:43, halál 24:43; első figyelmeztetéstől kb. 20,5 számlálható óra.
+**Idővonal 2: Klasszikus, Gyerek** (ugyanilyen feltételekkel): éhség-hívás 4:10, Kritikus 12:40, halál 24:40; első figyelmeztetéstől kb. 20,5 számlálható óra.
 
 **Idővonal 3: Alap, Felnőtt** (ugyanilyen feltételekkel)
 
@@ -425,16 +425,16 @@ Első figyelmeztetéstől a halálig 21 óra 10 perc számlálható idő. Falió
 | 4:00 | 1. kaki |
 | 8:00 | 2. kaki; betegség (a kaki 4 órája a képernyőn) |
 | 8:20 | éhség-hívás: **1. figyelmeztetés** (a következő összesített értesítésben) |
-| 10:00 | boldogság-hívás |
-| 11:20, 13:00, 17:20 | gondozási hibák (éhség, boldogság, ismételt éhség); a távolléti plafon (3) elérve |
+| 9:20 | boldogság-hívás (betegség alatt ×1,5 fogyás, 7.4) |
+| 11:20, 12:20, 17:20 | gondozási hibák (éhség, boldogság, ismételt éhség); a távolléti plafon (3) elérve |
 | 12:00 | 3. kaki |
-| 17:10 | „Gyengélkedik” |
-| 25:30 | **Kritikus** (értesítés) |
-| 37:30 | Nagyi magához veszi (értesítés) |
+| 17:03 | „Gyengélkedik” |
+| 25:23 | **Kritikus** (értesítés) |
+| 37:23 | Nagyi magához veszi (értesítés) |
 
-Első figyelmeztetéstől a Nagyi-átadásig 29 óra 10 perc számlálható idő. Faliórás példa (07:00 utolsó gondozás, a kedvenc alvásablaka 23:00-07:00): Kritikus a 2. nap 16:30-kor, Nagyi a 3. nap 12:30-kor.
+Első figyelmeztetéstől a Nagyi-átadásig 29 óra 3 perc számlálható idő. Faliórás példa (07:00 utolsó gondozás, a kedvenc alvásablaka 23:00-07:00): Kritikus a 2. nap 16:23-kor, Nagyi a 3. nap 12:23-kor.
 
-Ezek az idővonalak a szimulációs csomag kötelező tesztesetei (FR-07).
+Ezek az idővonalak a szimulációs csomag kötelező tesztesetei (FR-07); a `mobile/src/sim/__tests__/timelines.test.ts` ellenőrzi őket. A 0.1-es változat példái a 7.4 betegség miatti ×1,5-ös boldogságfogyását nem számolták; a fenti értékek ezt már tartalmazzák.
 
 ### 7.14 Természetes halál, generációk, emlékkert
 
