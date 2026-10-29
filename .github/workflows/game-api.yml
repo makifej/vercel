@@ -1,0 +1,39 @@
+name: Game API
+
+on:
+  pull_request:
+    paths:
+      - "game-api/**"
+      - "mobile/src/sim/**"
+      - ".github/workflows/game-api.yml"
+  push:
+    branches: [main]
+    paths:
+      - "game-api/**"
+      - "mobile/src/sim/**"
+      - ".github/workflows/game-api.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: game-api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Szimuláció-szinkron, typecheck és tesztek
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: game-api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: game-api/package-lock.json
+      - run: npm ci
+      - name: A szerver szimulációs másolata egyezik a mobil apppal
+        run: npm run check-sim
+      - run: npm run typecheck
+      - run: npm test

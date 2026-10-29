@@ -176,6 +176,11 @@ export function advanceInPlace(s: PetState, ctx: SimContext, toMs: number, event
       return;
     }
     const t0 = s.lastMs;
+    const outage = ctx.frozen?.find((f) => t0 >= f.start && t0 < f.end);
+    if (outage) {
+      s.lastMs = Math.min(target, ceilMin(outage.end));
+      continue;
+    }
     if (s.vacation) {
       if (t0 >= s.vacation.end) {
         s.vacation = null;
@@ -230,7 +235,7 @@ function stepMinute(s: PetState, ctx: SimContext, t0: number, ev: Events): void 
     onStageEnd(s, t, ev);
     if (s.status !== 'alive') return;
   }
-  awakeMinute(s, local, t, ev, false);
+  awakeMinute(s, local, t, ev, false, ctx.holdDeath === true);
 }
 
 function babyMinute(s: PetState, local: LocalTime, t: number, ev: Events): void {
@@ -245,7 +250,7 @@ function babyMinute(s: PetState, local: LocalTime, t: number, ev: Events): void 
     }
     return;
   }
-  awakeMinute(s, local, t, ev, true);
+  awakeMinute(s, local, t, ev, true, false);
 }
 
 function hatch(s: PetState, t: number, ev: Events): void {
@@ -306,7 +311,14 @@ function traitMult(s: PetState, trait: TraitId): number {
   return s.trait === trait ? 1.1 : 1;
 }
 
-function awakeMinute(s: PetState, local: LocalTime, t: number, ev: Events, isBaby: boolean): void {
+function awakeMinute(
+  s: PetState,
+  local: LocalTime,
+  t: number,
+  ev: Events,
+  isBaby: boolean,
+  holdDeath: boolean,
+): void {
   const mp = MODE[s.mode];
   const stage = s.stage as LiveStage;
 
@@ -440,8 +452,9 @@ function awakeMinute(s: PetState, local: LocalTime, t: number, ev: Events, isBab
         ev.push({ t, type: 'criticalWarn', remainingMin: remaining });
       }
       if (remaining <= 0) {
-        if (s.mode === 'klasszikus') die(s, s.critical.cause, t, ev);
-        else toNagyi(s, t, ev);
+        if (s.mode === 'alap') toNagyi(s, t, ev);
+        else if (holdDeath) s.critical.countedMin = mp.criticalMin;
+        else die(s, s.critical.cause, t, ev);
       }
     }
   }

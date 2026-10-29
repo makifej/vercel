@@ -200,4 +200,11 @@ export interface LocalTime {
 
 export interface SimContext {
   local: (ms: number) => LocalTime;
+  /**
+   * Vészleállító (PRD 13.13, `sys:flags.deathEnabled = false`): a lejárt
+   * Klasszikus Kritikus óra nem okoz halált, a kedvenc Kritikus állapotban marad.
+   */
+  holdDeath?: boolean;
+  /** Szolgáltatáskiesések (PRD 8.5): ezekben az intervallumokban a szimuláció áll. */
+  frozen?: Interval[];
 }

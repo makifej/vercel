@@ -1,0 +1,30 @@
+{
+  "name": "pixeltojas-game-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pixeltojás játék-backend (PRD 13. fejezet): Express 5 + TypeScript, Vercel, Upstash Redis",
+  "main": "api/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "sync-sim": "node scripts/sync-sim.mjs",
+    "check-sim": "node scripts/sync-sim.mjs --check"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.5",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.5"
+  }
+}

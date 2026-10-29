@@ -9,3 +9,4 @@ export * from './engine';
 export * from './actions';
 export * from './lifecycle';
 export * from './forecast';
+export * from './minigame';
