@@ -62,6 +62,16 @@ jobs:
       - name: Release APK fordítása
         working-directory: mobile/android
         run: ./gradlew assembleRelease --no-daemon
+      - name: Engedélyek ellenőrzése (nincs pontos riasztás, FR-21)
+        working-directory: mobile/android
+        run: |
+          manifests=$(find app/build/intermediates -name AndroidManifest.xml -path '*merged_manifest*' -path '*elease*')
+          test -n "$manifests" || { echo "Nem található egyesített release manifest"; exit 1; }
+          echo "$manifests"
+          if grep -E 'SCHEDULE_EXACT_ALARM|USE_EXACT_ALARM|SYSTEM_ALERT_WINDOW' $manifests; then
+            echo "Tiltott engedély az egyesített manifestben"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v5
         with:
           name: android-apk

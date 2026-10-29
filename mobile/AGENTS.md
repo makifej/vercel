@@ -23,11 +23,12 @@ npx expo install --fix      # fix incompatible package versions
 
 Run lint and typecheck before declaring any task done.
 
-## Navigation & Routing
+## App structure
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+- `src/sim/`: pure, I/O-free simulation (PRD chapters 7-8). No `Date.now()` inside; every function takes explicit times. Keep it that way so it can move into a shared package later (PRD 13.3).
+- `src/game/`: persistence, notification planning and the `useGame` hook.
+- `src/ui/`: screens. Navigation is a simple tab state in `src/App.tsx`; there is no Expo Router in this prototype.
+- Golden tests for the PRD 7.13 timelines live in `src/sim/__tests__/timelines.test.ts`; update them only together with the PRD.
 
 ## Building with EAS
 
