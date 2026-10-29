@@ -80,6 +80,20 @@ export const REJECT_TEXT: Record<RejectReason, string> = {
   vacation: 'Szabadságon van.',
 };
 
+export const SCHEDULE_ERROR_TEXT: Record<'cooldown' | 'tooShort' | 'tooLong', string> = {
+  cooldown: 'A napirend 24 óránként egyszer módosítható.',
+  tooShort: 'Az alvásidő legalább 7 óra.',
+  tooLong: 'Az alvásidő legfeljebb 11 óra.',
+};
+
+export const VACATION_ERROR_TEXT: Record<'tooLong' | 'budget' | 'notAllowed' | 'invalid' | 'notAlive', string> = {
+  tooLong: 'Ez hosszabb, mint az egy alkalomra engedélyezett idő.',
+  budget: 'A 90 napos szabadságkeret erre már nem elég.',
+  notAllowed: 'Klasszikus módban beteg, kritikus vagy éhes kedvenccel nem indítható.',
+  invalid: 'Érvénytelen időtartam.',
+  notAlive: 'Most nem indítható.',
+};
+
 export function stageLabel(p: PetState): string {
   if (p.status === 'egg') return 'tojás';
   const form = p.form ? FORM_NAMES[p.form] : null;
@@ -186,7 +200,8 @@ export function absenceSummary(events: SimEvent[]): string | null {
   return `Távollétedben: ${parts.join(', ')}.`;
 }
 
-export function deathText(cause: DeathCause, name: string): string {
+export function deathText(cause: DeathCause | null, name: string): string {
+  if (cause === null) return `${name} Nagyinál marad. Az emlékkertben megőrizzük.`;
   if (cause === 'oregkor') return `${name} hosszú, teljes életet élt. Elaludt, és nem ébredt fel többé. Egy tojást hagyott hátra.`;
   if (cause === 'betegseg') return `${name} betegsége erősebb volt nála. Az emlékkertben megőrizzük.`;
   return `${name} nem élte túl a kritikus állapotot. Az emlékkertben megőrizzük.`;

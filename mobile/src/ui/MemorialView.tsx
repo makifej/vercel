@@ -1,7 +1,7 @@
 // Emlékkert (FR-15) és családfa (FR-16). Teljesen ingyenes, fizetési elem
 // nélkül; a sírfelirat csak a játékosé, analitikába nem kerül.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { MemorialEntry } from '../sim';
 import type { GameApi } from '../game/useGame';
@@ -63,7 +63,11 @@ function EntryCard({ entry, game }: { entry: MemorialEntry; game: GameApi }) {
 }
 
 export function MemorialView({ game }: { game: GameApi }) {
-  const entries = game.save.memorial;
+  const entries = game.memorial;
+  const { refreshMemorial, mode } = game;
+  useEffect(() => {
+    if (mode === 'server') void refreshMemorial();
+  }, [mode, refreshMemorial]);
   const families = useMemo(() => {
     const map = new Map<string, MemorialEntry[]>();
     for (const e of entries) map.set(e.familyName, [...(map.get(e.familyName) ?? []), e]);

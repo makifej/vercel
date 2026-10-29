@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   ACTION,
   daysAtNagyi,
@@ -57,9 +57,12 @@ export function HomeView({ game }: { game: GameApi }) {
 
   if (!pet) return null;
 
-  const doCare = (action: CareAction) => {
-    const r = game.care(action);
-    setFeedback(r ? REJECT_TEXT[r] : null);
+  const doCare = async (action: CareAction) => {
+    setFeedback(await game.care(action));
+  };
+
+  const run = async (op: () => Promise<string | null>) => {
+    setFeedback(await op());
   };
 
   const onAction = (type: CareAction['type']) => {
@@ -71,11 +74,16 @@ export function HomeView({ game }: { game: GameApi }) {
       setPlaying(true);
       return;
     }
-    doCare({ type } as CareAction);
+    void doCare({ type } as CareAction);
   };
 
+  const premium = game.mode === 'local' || Boolean(game.entitlements?.full || game.entitlements?.trialActive);
+
   return (
-    <ScrollView contentContainerStyle={styles.scroll}>
+    <ScrollView
+      contentContainerStyle={styles.scroll}
+      refreshControl={<RefreshControl refreshing={game.busy} onRefresh={() => void game.refresh()} />}
+    >
       <View style={styles.header}>
         <Text style={styles.name} accessibilityRole="header">
           {pet.name}
@@ -88,6 +96,13 @@ export function HomeView({ game }: { game: GameApi }) {
           <Text style={styles.fast}>{`Gyorsított idő ×${game.save.time.scale} · játékidő: ${formatWhen(now, Date.now())}`}</Text>
         ) : null}
       </View>
+
+      {game.mode === 'server' && game.serverError ? (
+        <Card>
+          <Body>{game.online ? game.serverError : 'Nincs kapcsolat a szerverrel. A kijelzés az utolsó ismert állapotból számol; gondozni kapcsolat mellett lehet.'}</Body>
+          <Button label="Újra" kind="secondary" onPress={() => void game.refresh()} style={styles.mt} />
+        </Card>
+      ) : null}
 
       {game.summary ? (
         <Card>
@@ -113,7 +128,7 @@ export function HomeView({ game }: { game: GameApi }) {
               </Body>
               <Body dim>Gondozd: étel, játék vagy nasi, takarítás, gyógyszer.</Body>
               {pet.mode === 'klasszikus' ? (
-                <Button label="Váltás Alap módra" kind="secondary" onPress={game.downgrade} style={styles.mt} />
+                <Button label="Váltás Alap módra" kind="secondary" onPress={() => void run(game.downgrade)} style={styles.mt} />
               ) : null}
             </Card>
           ) : null}
@@ -121,7 +136,7 @@ export function HomeView({ game }: { game: GameApi }) {
           {pet.vacation && now >= pet.vacation.start ? (
             <Card>
               <Body>{`${pet.name} szabadságon van ${formatWhen(pet.vacation.end, now)}-ig. Közben minden áll.`}</Body>
-              <Button label="Szabadság vége" kind="secondary" onPress={game.endVacationNow} style={styles.mt} />
+              <Button label="Szabadság vége" kind="secondary" onPress={() => void run(game.endVacationNow)} style={styles.mt} />
             </Card>
           ) : null}
 
@@ -161,6 +176,7 @@ export function HomeView({ game }: { game: GameApi }) {
                 key={type}
                 label={type === 'lights' ? (pet.lightsOff ? 'Villany fel' : 'Villany le') : ACTION_LABELS[type]}
                 kind="secondary"
+                disabled={game.busy}
                 onPress={() => onAction(type)}
                 style={styles.gridItem}
               />
@@ -174,8 +190,10 @@ export function HomeView({ game }: { game: GameApi }) {
       <MiniGame
         visible={playing}
         name={pet.name}
+        seed={game.minigameSeed}
+        allowNagyobb={premium}
         onClose={() => setPlaying(false)}
-        onFinish={(won) => doCare({ type: 'play', won })}
+        onFinish={(kind, guesses, won) => void run(() => game.playMinigame(kind, guesses, won))}
       />
     </ScrollView>
   );
@@ -198,7 +216,7 @@ function EggCard({ game }: { game: GameApi }) {
       {nearBed ? (
         <Body dim>Hamarosan lefekvés. Érdemes reggel melegíteni; ha most kelteted, az első alvás a bébi szakasz végén kezdődik.</Body>
       ) : null}
-      <Button label="Melegítés" onPress={game.warm} style={styles.mt} />
+      <Button label="Melegítés" disabled={game.busy} onPress={() => void game.warm()} style={styles.mt} />
     </Card>
   );
 }
@@ -210,9 +228,9 @@ function NagyiCard({ game }: { game: GameApi }) {
     <Card>
       <Body>{`${pet.name} Nagyinál van, amíg ráérsz. Hazahozhatod egy koppintással, ingyen.`}</Body>
       <Body dim>Visszatéréskor a gondozási hibák száma kettővel nő, felnőtt vagy idős korban az élettartam egy nappal rövidül.</Body>
-      <Button label="Hazahozom" onPress={game.bringHome} style={styles.mt} />
+      <Button label="Hazahozom" disabled={game.busy} onPress={() => void game.bringHome()} style={styles.mt} />
       {days >= NAGYI_STAY_OPTION_DAYS ? (
-        <Button label="Maradjon Nagyinál, új tojást kezdek" kind="secondary" onPress={game.leaveWithNagyi} style={styles.mt} />
+        <Button label="Maradjon Nagyinál, új tojást kezdek" kind="secondary" onPress={() => void game.leaveWithNagyi()} style={styles.mt} />
       ) : null}
     </Card>
   );
@@ -221,12 +239,14 @@ function NagyiCard({ game }: { game: GameApi }) {
 function FarewellCard({ game }: { game: GameApi }) {
   const pet = game.pet!;
   const [name, setName] = useState('');
-  const [mode, setMode] = useState<Mode>(pet.mode);
+  const premium = game.mode === 'local' || Boolean(game.entitlements?.full || game.entitlements?.trialActive);
+  const [mode, setMode] = useState<Mode>(premium ? pet.mode : 'alap');
+  const [error, setError] = useState<string | null>(null);
   const natural = pet.deathCause === 'oregkor';
   const valid = name.trim().length >= 1 && name.trim().length <= 12;
   return (
     <Card title="Búcsú">
-      <Body>{deathText(pet.deathCause ?? 'elhanyagolas', pet.name)}</Body>
+      <Body>{deathText(pet.deathCause, pet.name)}</Body>
       <Body dim>{`Élt ${Math.round(pet.lifeMin / 1440)} napot, ${pet.ageYears} évet.`}</Body>
       <Text style={[styles.statLabel, styles.mt]}>{natural ? 'Az új tojás neve' : 'Az új kedvenc neve'}</Text>
       <TextInput
@@ -244,20 +264,23 @@ function FarewellCard({ game }: { game: GameApi }) {
             key={m}
             label={`${MODE_NAMES[m]} mód`}
             kind={mode === m ? 'primary' : 'secondary'}
+            disabled={m === 'klasszikus' && !premium}
             onPress={() => setMode(m)}
             style={styles.flex}
           />
         ))}
       </View>
+      {!premium ? <Body dim>A Klasszikus mód és az öröklődés a Teljes verzió része; a próbaidő lejárt.</Body> : null}
       {mode === 'klasszikus' ? (
         <Body dim>Klasszikus módban a tartós elhanyagolás halálhoz vezet; a jellemző idő az első figyelmeztetéstől kb. 20-21 számlálható óra. Alap módra bármikor visszaléphetsz.</Body>
       ) : null}
       <Button
         label="Emlékkertbe kísérem, új tojás"
-        disabled={!valid}
-        onPress={() => game.closeLife(name.trim(), mode)}
+        disabled={!valid || game.busy}
+        onPress={async () => setError(await game.closeLife(name.trim(), mode))}
         style={styles.mt}
       />
+      {error ? <Body dim>{error}</Body> : null}
     </Card>
   );
 }

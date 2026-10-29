@@ -7,6 +7,7 @@ import { DAY_MIN, SCHEDULE_MAX_SLEEP_MIN, SCHEDULE_MIN_SLEEP_MIN, windowLength }
 import type { Mode, Schedule } from '../sim';
 import type { GameApi } from '../game/useGame';
 import { Body, Button, Card, TimeStepper } from './components';
+import { ServerCard } from './ServerCard';
 import { colors, spacing } from './theme';
 
 type Step = 'welcome' | 'schedule' | 'mode' | 'classicInfo' | 'name';
@@ -16,6 +17,7 @@ export function Onboarding({ game }: { game: GameApi }) {
   const [schedule, setSchedule] = useState<Schedule>({ bedMin: 23 * 60, wakeMin: 7 * 60 });
   const [mode, setMode] = useState<Mode>('alap');
   const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const sleepLen = DAY_MIN - windowLength(schedule.wakeMin, schedule.bedMin);
   const scheduleOk = sleepLen >= SCHEDULE_MIN_SLEEP_MIN && sleepLen <= SCHEDULE_MAX_SLEEP_MIN;
@@ -31,10 +33,16 @@ export function Onboarding({ game }: { game: GameApi }) {
       {step === 'welcome' ? (
         <Card>
           <Body>Egy kis kedvenc, akiről minden nap gondoskodsz: etetés, játék, takarítás, gyógyszer és villanyoltás. A saját napirendedhez igazodik, és amíg alszol, ő is alszik.</Body>
-          <Body dim>Regisztráció nincs. Ez a prototípus semmilyen adatot nem küld; minden a telefonodon marad.</Body>
+          <Body dim>
+            {game.mode === 'server'
+              ? 'Regisztráció nincs: az alkalmazás egy névtelen fiókot kap a játékszerveren, ahol a kedvenced állapota él. Analitikai adatot nem gyűjtünk.'
+              : 'Regisztráció nincs. Ez a mód semmilyen adatot nem küld; minden a telefonodon marad.'}
+          </Body>
           <Button label="Kezdjük" onPress={() => setStep('schedule')} style={styles.mt} />
         </Card>
       ) : null}
+
+      {step === 'welcome' ? <ServerCard game={game} compact /> : null}
 
       {step === 'schedule' ? (
         <Card title="Napirend">
@@ -106,10 +114,11 @@ export function Onboarding({ game }: { game: GameApi }) {
           />
           <Button
             label="Kérem a tojást"
-            disabled={!nameOk}
-            onPress={() => game.createFirstEgg({ name: name.trim(), mode, schedule })}
+            disabled={!nameOk || game.busy}
+            onPress={async () => setError(await game.createFirstEgg({ name: name.trim(), mode, schedule }))}
             style={styles.mt}
           />
+          {error ? <Body dim>{error}</Body> : null}
         </Card>
       ) : null}
     </ScrollView>

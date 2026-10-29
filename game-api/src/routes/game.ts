@@ -96,6 +96,13 @@ function activePetId(profile: Profile): string {
   return profile.activePetId;
 }
 
+/** Az aktív kedvenc folyamatban lévő vagy ütemezett szabadságának azonosítója. */
+function activeVacationId(profile: Profile, state: PetState): string | null {
+  if (!state.vacation) return null;
+  const v = profile.vacations.find((x) => x.petId === state.id && x.start === state.vacation!.start);
+  return v?.id ?? null;
+}
+
 function dayKey(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
@@ -124,7 +131,12 @@ export function gameRoutes(deps: Deps): Router {
     }
     const ctx = await simContextFor(deps, profile);
     const result = await syncPet(deps, profile, profile.activePetId, ctx);
-    res.json({ serverNow: iso(now), ...petView(deps, ctx, result), entitlements: entitlementView(ent) });
+    res.json({
+      serverNow: iso(now),
+      ...petView(deps, ctx, result),
+      activeVacationId: activeVacationId(profile, result.record.state),
+      entitlements: entitlementView(ent),
+    });
   });
 
   r.post('/v1/pets', auth, async (req, res) => {
@@ -370,6 +382,8 @@ export function gameRoutes(deps: Deps): Router {
     await saveProfile(deps.kv, profile);
     const mode = result.record.state.mode;
     res.json({
+      serverNow: iso(deps.now()),
+      activeVacationId: entry.id,
       vacation: { id: entry.id, start: iso(entry.start), end: iso(entry.end) },
       remainingDays90: Math.max(0, MODE[mode].vacationBudgetDays - vacationBudgetUsedDays(profile.vacations, now)),
       ...petView(deps, ctx, result),
@@ -390,7 +404,7 @@ export function gameRoutes(deps: Deps): Router {
     const done = finished as { start: number; end: number } | null;
     profile.vacations = profile.vacations.flatMap((v) => (v.id !== entry.id ? [v] : done ? [{ ...v, ...done }] : []));
     await saveProfile(deps.kv, profile);
-    res.json({ ended: true, ...petView(deps, ctx, result) });
+    res.json({ serverNow: iso(deps.now()), ended: true, activeVacationId: null, ...petView(deps, ctx, result) });
   });
 
   r.get('/v1/memorial', auth, async (_req, res) => {

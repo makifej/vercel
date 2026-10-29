@@ -61,6 +61,10 @@ jobs:
         run: npx expo prebuild --platform android --no-install --clean
       - name: Release APK fordítása
         working-directory: mobile/android
+        env:
+          # A játékszerver címe a repó változójából (Settings, Variables: GAME_API_URL).
+          # Ha üres, az app helyi módban indul, és a cím a Beállításokban adható meg.
+          EXPO_PUBLIC_API_URL: ${{ vars.GAME_API_URL }}
         run: ./gradlew assembleRelease --no-daemon
       - name: Engedélyek ellenőrzése (nincs pontos riasztás, FR-21)
         working-directory: mobile/android

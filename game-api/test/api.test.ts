@@ -153,6 +153,7 @@ describe('napirend, szabadság', () => {
     t.clock.now += 24 * H;
     const during = await a.get('/v1/state');
     expect(during.body.pet.vacation).not.toBeNull();
+    expect(during.body.activeVacationId).toBe(started.body.vacation.id);
     const ended = await a.del(`/v1/vacations/${started.body.vacation.id}`);
     expect(ended.body.pet.vacation).toBeNull();
     const tooLong = await a.post('/v1/vacations', { start: 'now', end: new Date(t.clock.now + 20 * 24 * H).toISOString() });
@@ -324,5 +325,15 @@ describe('üzemeltetés', () => {
     const a = api(t, token);
     for (let i = 0; i < 3; i++) expect((await a.get('/v1/state')).status).toBe(200);
     expect((await a.get('/v1/state')).status).toBe(429);
+  });
+});
+
+describe('CORS', () => {
+  it('előzetes kérés 204, a válaszban az engedélyezett fejlécek', async () => {
+    const t = makeEnv();
+    const pre = await request(t.app).options('/v1/state').set('Origin', 'http://localhost:8081');
+    expect(pre.status).toBe(204);
+    expect(pre.headers['access-control-allow-headers']).toContain('Authorization');
+    expect((await request(t.app).get('/v1/health')).headers['access-control-allow-origin']).toBe('*');
   });
 });

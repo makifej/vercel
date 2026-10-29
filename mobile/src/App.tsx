@@ -1,12 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useGame } from './game/useGame';
 import { Body, Button, Card } from './ui/components';
 import { HomeView } from './ui/HomeView';
 import { MemorialView } from './ui/MemorialView';
 import { Onboarding } from './ui/Onboarding';
+import { ServerCard } from './ui/ServerCard';
 import { SettingsView } from './ui/SettingsView';
 import { colors, spacing } from './ui/theme';
 
@@ -27,6 +28,17 @@ function Root() {
       <View style={styles.center}>
         <ActivityIndicator color={colors.accent} />
       </View>
+    );
+  }
+
+  if (game.mode === 'server' && !game.synced) {
+    return (
+      <ScrollView contentContainerStyle={styles.connecting}>
+        {game.serverError ? null : <ActivityIndicator color={colors.accent} />}
+        <Body>{game.serverError ?? 'Kapcsolódás a játékszerverhez...'}</Body>
+        {game.serverError ? <Button label="Újra" onPress={() => void game.refresh()} /> : null}
+        <ServerCard game={game} compact />
+      </ScrollView>
     );
   }
 
@@ -88,6 +100,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  connecting: { flexGrow: 1, justifyContent: 'center', padding: spacing(4), gap: spacing(3) },
   tabs: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.card },
   tab: { flex: 1, minHeight: 56, alignItems: 'center', justifyContent: 'center' },
   tabActive: { borderTopWidth: 3, borderTopColor: colors.accent },

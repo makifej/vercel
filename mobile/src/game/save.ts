@@ -47,6 +47,8 @@ export const NOTIFY_DEFAULTS: Record<Mode, Record<NotifyCategory, boolean>> = {
 };
 
 export interface Settings {
+  /** A játék-backend címe; null: helyi mód (PRD 13: szerver-autoritatív mód, ha van). */
+  serverUrl: string | null;
   notifyOverrides: Partial<Record<NotifyCategory, boolean>>;
   digestTimes: number[];
   deathStyle: 'csillag' | 'sirko';
@@ -78,6 +80,7 @@ export function emptySave(): SaveData {
     memorial: [],
     vacationHistory: [],
     settings: {
+      serverUrl: defaultServerUrl(),
       notifyOverrides: {},
       digestTimes: [8 * 60, 12 * 60 + 30, 18 * 60 + 30],
       deathStyle: 'csillag',
@@ -91,6 +94,12 @@ export function emptySave(): SaveData {
       lastBackgroundReal: null,
     },
   };
+}
+
+/** Build-időben beégetett backend-cím (`EXPO_PUBLIC_API_URL`), ha van. */
+export function defaultServerUrl(): string | null {
+  const url = process.env.EXPO_PUBLIC_API_URL;
+  return url && /^https?:\/\//.test(url) ? url.replace(/\/+$/, '') : null;
 }
 
 export function notifyEnabled(settings: Settings, mode: Mode, cat: NotifyCategory): boolean {

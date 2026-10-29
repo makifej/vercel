@@ -17,6 +17,19 @@ export function createApp(deps: Deps): express.Express {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', true);
+  // CORS böngészős kliensekhez (webes előnézet, törlési oldal); a natív app nem igényli.
+  // Sütit nem használunk, a hitelesítés Bearer-tokennel megy, így a nyitott origin biztonságos.
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Expose-Headers', 'X-Refreshed-Token');
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
   app.use(
     express.json({
       limit: '64kb',

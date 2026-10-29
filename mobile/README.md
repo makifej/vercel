@@ -2,7 +2,9 @@
 
 Tamagotchi-szerű virtuális háziállat felnőtt, nosztalgiázó játékosoknak. A termékkövetelmények a [`docs/PRD-tamagotchi.md`](../docs/PRD-tamagotchi.md) fájlban, a mögöttük álló kutatás a [`reports/`](../reports/) és a [`research_notes/`](../research_notes/) mappában található.
 
-Ez a build a PRD „játszható offline váz” szelete: a teljes játékmechanika (PRD 7. és 8. fejezet) a telefonon fut, szerver, fiók és fizetés nélkül.
+Két módban fut. **Helyi módban** a teljes játékmechanika (PRD 7. és 8. fejezet) a telefonon fut, szerver és fiók nélkül. **Szerver módban** a [`game-api`](../game-api/) backend az idő és az állapot forrása (PRD 13.4): az app névtelen fiókot kap, minden gondozási művelet a szerveren fut, a két szinkron között a telefon ugyanazzal a szimulációval vetít, verzióütközésnél automatikusan újraszinkronizál.
+
+A szerver címe kétféleképpen adható meg: build-időben a `EXPO_PUBLIC_API_URL` környezeti változóval (a CI a repó `GAME_API_URL` változójából veszi), vagy futás közben az első indításkor, illetve a Beállítások „Játékszerver” kártyáján. Cím nélkül az app helyi módban indul.
 
 ## Telepítés Androidra
 
@@ -40,9 +42,10 @@ A tesztek a szimuláció golden idővonalait (PRD 7.13), a determinizmust, az al
 
 ## Ami szándékosan hiányzik (későbbi lépés a PRD szerint)
 
-- **Szerver-autoritatív idő és szinkron** (PRD 13.4-13.7): az óra most a telefoné, ezért az előreállítás csalásra alkalmas; visszaállításnál a szimuláció egyszerűen megáll.
-- **Szerverpush tartalék** (FR-22), fiók és összekapcsolás (FR-33-35).
-- **Próbaidő, Teljes verzió, kozmetikumok** (PRD 10): ebben a buildben minden funkció ingyenesen elérhető.
+- **Helyi módban** az óra a telefoné, ezért az előreállítás csalásra alkalmas; szerver módban ez nem lehetséges.
+- **Szerverpush tartalék** (FR-22): a push token regisztrálásához Firebase-konfiguráció (`google-services.json`) kell, ez még nincs; a helyi értesítések mindkét módban működnek.
+- **Apple- és Google-összekapcsolás a felületen** (FR-34): a backend kész, az appban még nincs bejelentkezési gomb.
+- **Vásárlás** (PRD 10): a próbaidőt és a jogosultságot a szerver kezeli, de RevenueCat-fizetőfal még nincs; a próbaidő után a Klasszikus mód és a második minijáték zárolt.
 - **Widgetek** (FR-24-25), angol lokalizáció (FR-37), analitika (FR-42).
 
 ## Prototípus: időgyorsítás
